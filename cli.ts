@@ -1,10 +1,11 @@
 import * as process from 'process';
+import { calculateMetrics } from './metric';  // Assuming you already have metric.ts transpiled
 //import * as fs from 'fs';
 
 function install(): void {
     try {
         console.log("Installing dependencies...");
-        execSync('pip install', { stdio: 'inherit' }); // Can also be npm install
+        execSync('npm install', { stdio: 'inherit' });  // You can also change this to pip or any package manager
         console.log("Dependencies installed successfully.");
         process.exit(0);
     } catch (error) {
@@ -16,8 +17,8 @@ function install(): void {
 function test(): void {
     try {
         console.log("Running tests...");
-        execSync('npm test', { stdio: 'inherit' }); // Modify as needed for your test suite
-        const coverageOutput = execSync('npm run coverage', { stdio: 'pipe' }).toString(); // Assuming you have a coverage script
+        execSync('npm test', { stdio: 'inherit' });
+        const coverageOutput = execSync('npm run coverage', { stdio: 'pipe' }).toString();  // Assuming you have a coverage script
         console.log(coverageOutput);
         process.exit(0);
     } catch (error) {
@@ -26,8 +27,27 @@ function test(): void {
     }
 }
 
-function urlFile(url: string) {
-    console.log("reading from: ", url);
+function urlFile(filePath: string): void {
+    try {
+        const urls = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
+        const results = urls.map(url => {
+            if (isValidUrl(url)) {
+                return calculateMetrics(url);  // Calculate metrics for each valid URL
+            } else {
+                console.error(`Invalid URL: ${url}`);
+                return null;
+            }
+        }).filter(result => result !== null);
+        
+        results.forEach(result => {
+            console.log(JSON.stringify(result));  // Output NDJSON
+        });
+
+        process.exit(0);
+    } catch (error) {
+        console.error("Error processing the file:", error);
+        process.exit(1);
+    }
 }
 
 function isValidUrl(url: string): boolean {
