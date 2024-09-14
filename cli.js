@@ -3,10 +3,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var process = require("process");
 //import * as fs from 'fs';
 function install() {
-    console.log("installing...");
+    try {
+        console.log("Installing dependencies...");
+        execSync('pip install', { stdio: 'inherit' }); // Can also be npm install
+        console.log("Dependencies installed successfully.");
+        process.exit(0);
+    } catch (error) {
+        console.error("Error installing dependencies:", error);
+        process.exit(1);
+    }
 }
 function test() {
-    console.log("running tests...");
+    try {
+        console.log("Running tests...");
+        execSync('npm test', { stdio: 'inherit' }); // Assuming you're using npm for testing
+        const coverageOutput = execSync('npm run coverage', { stdio: 'inherit' }); // Adjust based on your coverage tool
+        console.log(coverageOutput.toString());
+        process.exit(0);
+    } catch (error) {
+        console.error("Error running tests:", error);
+        process.exit(1);
+    }
 }
 function urlFile(url) {
     console.log("reading from: ", url);

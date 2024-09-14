@@ -1,12 +1,29 @@
 import * as process from 'process';
 //import * as fs from 'fs';
 
-function install() {
-    console.log("installing...");
+function install(): void {
+    try {
+        console.log("Installing dependencies...");
+        execSync('pip install', { stdio: 'inherit' }); // Can also be npm install
+        console.log("Dependencies installed successfully.");
+        process.exit(0);
+    } catch (error) {
+        console.error("Error installing dependencies:", error);
+        process.exit(1);
+    }
 }
 
-function test() {
-    console.log("running tests...");
+function test(): void {
+    try {
+        console.log("Running tests...");
+        execSync('npm test', { stdio: 'inherit' }); // Modify as needed for your test suite
+        const coverageOutput = execSync('npm run coverage', { stdio: 'pipe' }).toString(); // Assuming you have a coverage script
+        console.log(coverageOutput);
+        process.exit(0);
+    } catch (error) {
+        console.error("Error running tests:", error);
+        process.exit(1);
+    }
 }
 
 function urlFile(url: string) {
