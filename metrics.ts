@@ -6,11 +6,16 @@ interface RepositoryData {
     lastCommitDate: Date;
     pullRequests: number;
     license: string;
+    files: File[];
 }
 interface Issue {
     state: string;
     created_at: string;
     closed_at: string | null;
+}
+
+interface File {
+    fileName: string;
 }
 
 interface Metrics {
@@ -84,10 +89,20 @@ function calculateCorrectness(data: RepositoryData): number {
 *   - Ramp up time is a measure of how much time is required for a new developer to become productive
 *       - Presence of documentation (e.g. README)
 *       - Size of codebase
-*       - Comment to source line of code ratio
 */
 function calculateRampUpTime(data: RepositoryData): number {
-    
+    let rampUpTimeScore = 0;
+
+    // Check for the presence of a README file
+    const hasReadme = data.files.some(file => file.fileName.toLowerCase() === 'readme.md' || file.name.toLowerCase() === 'readme');
+
+    if (hasReadme) {
+        rampUpTimeScore += 0.5;
+    }
+
+    // Additional logic for size of codebase can be added here
+
+    return rampUpTimeScore;
 }
 
 /* Responsiveness:
