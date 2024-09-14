@@ -1,11 +1,13 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var process = require("process");
-//import * as fs from 'fs';
+const { execSync } = require('child_process');  // Import execSync from child_process
+const fs = require('fs');  // Import fs for file handling
+const { performance } = require('perf_hooks');  // For latency calculation
+const { calculateMetrics } = require('./metric');  // Import the metrics function from metric.js (after transpiling)
+
 function install() {
     try {
         console.log("Installing dependencies...");
-        execSync('pip install', { stdio: 'inherit' }); // Can also be npm install
+        execSync('npm install', { stdio: 'inherit' }); // Replace 'pip install' with 'npm install' if using Node.js
         console.log("Dependencies installed successfully.");
         process.exit(0);
     } catch (error) {
@@ -13,11 +15,12 @@ function install() {
         process.exit(1);
     }
 }
+
 function test() {
     try {
         console.log("Running tests...");
-        execSync('npm test', { stdio: 'inherit' }); // Assuming you're using npm for testing
-        const coverageOutput = execSync('npm run coverage', { stdio: 'inherit' }); // Adjust based on your coverage tool
+        execSync('npm test', { stdio: 'inherit' }); // Adjust based on your test setup
+        const coverageOutput = execSync('npm run coverage', { stdio: 'inherit' }); // Modify based on your coverage tool
         console.log(coverageOutput.toString());
         process.exit(0);
     } catch (error) {
@@ -25,21 +28,45 @@ function test() {
         process.exit(1);
     }
 }
-function urlFile(url) {
-    console.log("reading from: ", url);
+
+function urlFile(filePath) {
+    try {
+        const urls = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);  // Read the file and split by line
+        const results = urls.map(url => {
+            if (isValidUrl(url)) {
+                return calculateMetrics(url);  // Calculate the metrics for each URL
+            } else {
+                console.error(`Invalid URL: ${url}`);
+                return null;
+            }
+        }).filter(result => result !== null);  // Filter out invalid results
+        
+        // Output each result as NDJSON
+        results.forEach(result => {
+            console.log(JSON.stringify(result));
+        });
+
+        process.exit(0);
+    } catch (error) {
+        console.error("Error processing the file:", error);
+        process.exit(1);
+    }
 }
+
 function isValidUrl(url) {
-    var npmjsPattern = /^https:\/\/www\.npmjs\.com\/package\/.+/;
-    var githubPattern = /^https:\/\/github\.com\/.+\/.+/;
+    const npmjsPattern = /^https:\/\/www\.npmjs\.com\/package\/.+/;
+    const githubPattern = /^https:\/\/github\.com\/.+\/.+/;
     return npmjsPattern.test(url) || githubPattern.test(url);
 }
+
 function main() {
-    var args = process.argv.slice(2);
+    const args = process.argv.slice(2);  // Slice out the first two default arguments
     if (args.length === 0) {
         console.error('No command provided.');
         process.exit(1);
     }
-    var command = args[0];
+
+    const command = args[0];
     switch (command) {
         case 'install':
             install();
@@ -48,14 +75,14 @@ function main() {
             test();
             break;
         default:
-            if (isValidUrl(command)) {
-                urlFile(command);
-            }
-            else {
-                console.error('Invalid command or URL');
+            if (fs.existsSync(command)) {
+                urlFile(command);  // If it's a file, process it
+            } else {
+                console.error('Invalid command or URL file path.');
                 process.exit(1);
             }
             break;
     }
 }
+
 main();
