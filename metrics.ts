@@ -1,4 +1,6 @@
 // DEFINE INTERFACES
+
+// Define the structure of the data returned by the GitHub API
 interface RepositoryData {
     name: string;
     contributors: number;
@@ -8,12 +10,16 @@ interface RepositoryData {
     license: string;
     files: File[];
 }
+
+// Define the structure of the data about Issues
 interface Issue {
     state: string;
     created_at: string;
     closed_at: string | null;
+    labels: string[] | null;
 }
 
+// Define the structure of the data about Files
 interface File {
     fileName: string;
 }
@@ -75,14 +81,39 @@ function calculateBusFactor(data: RepositoryData): number {
 
 /* Correctness:
 *   - Correctness is a measure of the reliability and stability of the codebase
-*       - Open issues
 *       - Issues labeled as bugs
 *       - Open/closed issue ratio
-*       - Presence of testing
-*       - Use code quality tools
 */
 function calculateCorrectness(data: RepositoryData): number {
-    
+    let correctness = 0;
+
+    // number of open bugs
+    const openBugIssues = data.issues.filter(issue => issue.state === 'open' && issue.labels && issue.labels.includes('bug')).length;
+
+    // open/closed issue ratio
+    const openIssues = data.issues.filter(issue => issue.state === 'open').length;
+    const closedIssues = data.issues.filter(issue => issue.state === 'closed').length;
+    const issueRatio = closedIssues > 0 ? openIssues / closedIssues : openIssues;
+
+    if(issueRatio == 0){
+        correctness = 1;
+    }
+    else if(issueRatio < 0.25){
+        correctness = 0.8;
+    }
+    else if(issueRatio < 0.5){
+        correctness = 0.6;
+    }
+    else if(issueRatio < 1){
+        correctness = 0.4;
+    }
+    else if(issueRatio > 1){
+        correctness = 0.2;
+    }
+
+    correctness = correctness * 1 / (1.15 ** openBugIssues);
+
+    return correctness;
 }
 
 /* Ramp Up Time:
