@@ -1,6 +1,7 @@
 import * as process from 'process';
-import { calculateMetrics } from './metric';  // Assuming you already have metric.ts transpiled
-//import * as fs from 'fs';
+import { execSync } from 'child_process'
+import { calculateMetrics } from './metrics';  // Assuming you already have metric.ts transpiled
+import * as fs from 'fs';
 
 function install(): void {
     try {
