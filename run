@@ -6,7 +6,9 @@ if [ "$arg1" == "install" ]; then
     npm install @types/node --save-dev
     npm install fs --save-dev
     npm install child_process --save-dev
+    exit 0
 else
     npx tsc cli.ts
     node cli.js "$arg1"
+    exit 0
 fi
