@@ -1,0 +1,12 @@
+{
+  "name": "group27_461_project",
+  "version": "1.0.0",
+  "description": "Ian Karlmann\r Evan Hoffmann\r Gokul Harikrishnan\r Dexter Lamb",
+  "main": "metrics.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
