@@ -1,4 +1,16 @@
 {
+<<<<<<< HEAD
+  "name": "group27_461_project",
+  "version": "1.0.0",
+  "description": "Ian Karlmann\r Evan Hoffmann\r Gokul Harikrishnan\r Dexter Lamb",
+  "main": "metrics.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+=======
   "dependencies": {
     "process": "^0.11.10",
     "tsc": "^2.0.4"
@@ -14,4 +26,5 @@
   "scripts": {
     "test": "mocha -r ts-node/register 'test_cases/*.ts'"
   }
+>>>>>>> a094dec02e3f3fa59a8df29b724d2d6ab02a1525
 }

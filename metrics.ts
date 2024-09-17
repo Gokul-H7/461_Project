@@ -1,3 +1,5 @@
+import fetch from 'node-fetch';
+
 // DEFINE INTERFACES
 
 // Define the structure of the data returned by the GitHub API
@@ -48,17 +50,53 @@ interface Weights {
     licenseCompatibility: number;
 }
 
-// Fetch Data
 async function fetchRepositoryData(repoUrl: string): Promise<RepositoryData> {
-    // Simulate fetching data from GitHub API
-    // In a real scenario, you would use fetch or axios to get data from GitHub API
+    const token = process.env.GITHUB_TOKEN;
+    const headers = {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json'
+    };
+
+    const repoName = repoUrl.replace('https://github.com/', '');
+    const repoApiUrl = `https://api.github.com/repos/${repoName}`;
+
+    const repoResponse = await fetch(repoApiUrl, { headers });
+    const repoData = await repoResponse.json() as {
+        name: string;
+        open_issues_count: number;
+        pushed_at: string;
+        license: { spdx_id: string } | null;
+    };
+
+    const issuesResponse = await fetch(`${repoApiUrl}/issues?state=all`, { headers });
+    const issuesData = await issuesResponse.json() as Issue[];
+
+    // Log the issuesData to check its structure
+    console.log('issuesData:', issuesData);
+
+    if (!Array.isArray(issuesData)) {
+        throw new Error('Expected issuesData to be an array');
+    }
+
+    const contributorsResponse = await fetch(`${repoApiUrl}/contributors`, { headers });
+    const contributorsData = await contributorsResponse.json() as { length: number }[];
+
+    const filesResponse = await fetch(`${repoApiUrl}/contents`, { headers });
+    const filesData = await filesResponse.json() as { name: string }[];
+
     return {
-        name: "example-repo",
-        contributors: 10,
-        issues: 5,
-        pullRequests: 3,
-        lastCommitDate: new Date('2023-10-01'),
-        license: "MIT"
+        name: repoData.name,
+        contributors: contributorsData.length,
+        issues: issuesData.map((issue: any) => ({
+            state: issue.state,
+            created_at: issue.created_at,
+            closed_at: issue.closed_at,
+            labels: issue.labels ? issue.labels.map((label: any) => label.name) : []
+        })),
+        pullRequests: repoData.open_issues_count,
+        lastCommitDate: new Date(repoData.pushed_at),
+        license: repoData.license ? repoData.license.spdx_id : 'No license',
+        files: filesData.map((file: any) => ({ fileName: file.name }))
     };
 }
 
@@ -125,7 +163,7 @@ function calculateRampUpTime(data: RepositoryData): number {
     let rampUpTimeScore = 0;
 
     // Check for the presence of a README file
-    const hasReadme = data.files.some(file => file.fileName.toLowerCase() === 'readme.md' || file.name.toLowerCase() === 'readme');
+    const hasReadme = data.files.some(file => file.fileName.toLowerCase() === 'readme.md' || file.fileName.toLowerCase() === 'readme');
 
     if (hasReadme) {
         rampUpTimeScore += 0.5;
@@ -287,7 +325,8 @@ async function main(repoUrl: string) {
     
     const finalScore = calculateFinalScore(metrics, weights);
     console.log(`Final Score for ${data.name}: ${finalScore}`);
+    console.log(`Latency Times: ${JSON.stringify(latencyTimes)}`);
 }
 
 // Example usage
-main("https://github.com/example/example-repo");
+main("https://github.com/ece362-purdue/lab3-timers-IanKarlmann");
