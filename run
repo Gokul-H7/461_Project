@@ -1,0 +1,12 @@
+#!/bin/bash
+arg1=$1
+if [ "$arg1" == "install" ]; then
+    npm init -y
+    npm install typescript --save-dev
+    npm install @types/node --save-dev
+    npm install fs --save-dev
+    npm install child_process --save-dev
+else
+    npx tsc cli.ts
+    node cli.js "$arg1"
+fi
