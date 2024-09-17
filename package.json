@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "group27_461_project",
   "version": "1.0.0",
   "description": "Ian Karlmann\r Evan Hoffmann\r Gokul Harikrishnan\r Dexter Lamb",
@@ -9,4 +10,21 @@
   "keywords": [],
   "author": "",
   "license": "ISC"
+=======
+  "dependencies": {
+    "process": "^0.11.10",
+    "tsc": "^2.0.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.13",
+    "@types/node": "^22.5.5",
+    "chai": "^5.1.1",
+    "mocha": "^10.7.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  },
+  "scripts": {
+    "test": "mocha -r ts-node/register 'test_cases/*.ts'"
+  }
+>>>>>>> a094dec02e3f3fa59a8df29b724d2d6ab02a1525
 }

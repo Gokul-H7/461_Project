@@ -1,0 +1,40 @@
+#!/bin/bash
+
+arg1=$1
+
+if [ "$arg1" == "install" ]; then
+    npm init -y
+    if [ $? -ne 0 ]; then
+        echo "npm init failed"
+        exit 1
+    fi
+
+    npm install typescript --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install typescript failed"
+        exit 1
+    fi
+
+    npm install @types/node --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install @types/node failed"
+        exit 1
+    fi
+
+    npm install fs --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install fs failed"
+        exit 1
+    fi
+
+    npm install child_process --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install child_process failed"
+        exit 1
+    fi
+
+    exit 0
+else
+    npx tsc cli.ts
+    node cli.js "$arg1"
+fi
