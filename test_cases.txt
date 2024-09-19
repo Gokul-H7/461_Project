@@ -9,3 +9,13 @@ https://www.npmjs.com/package/socket.io
 https://github.com/prathameshnetake/libvlc
 https://www.npmjs.com/package/react
 https://www.npmjs.com/package/unlicensed
+https://www.npmjs.com/package/random
+https://www.npmjs.com/package/geo-guessr-game
+https://github.com/voideditor/void
+https://github.com/bklieger-groq/g1
+https://github.com/jeremypelletier/novoline-unlicensed
+https://github.com/TheAlgorithms/Python
+https://github.com/47ng/nuqs
+https://github.com/microcks/microcks
+https://github.com/vitest-dev/vitest
+https://github.com/Gokul-H7/Group27_461_Project
