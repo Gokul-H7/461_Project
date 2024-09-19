@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 
 :: Handle the "install" command to install npm dependencies
 if "%1"=="install" (
@@ -28,18 +28,18 @@ if "%1"=="test" (
 
     :: Read each line (URL) from the file and process it
     for /f "delims=" %%a in (%URL_FILE%) do (
-        echo Processing test case #%INDEX% with URL: %%a
+        echo Processing test case #!INDEX! with URL: %%a
 
         :: Run the Node.js script and save output to a file
-        node metrics.js "%%a" > "%OUTPUT_DIR%\output_%INDEX%.json"
+        node metrics.js "%%a" > "%OUTPUT_DIR%\output_!INDEX!.json"
 
-        echo Output for test case #%INDEX% written to %OUTPUT_DIR%\output_%INDEX%.json
+        echo Output for test case #!INDEX! written to %OUTPUT_DIR%\output_!INDEX!.json
 
         :: Increment the index
         set /a INDEX+=1
 
         :: Stop after 20 test cases
-        if %INDEX% gtr 20 (
+        if !INDEX! gtr 20 (
             goto :done
         )
     )
@@ -70,9 +70,9 @@ for /f "delims=" %%a in (%URL_FILE%) do (
     echo Processing URL: %%a
 
     :: Run the Node.js script and save output to a file
-    node metrics.js "%%a" > "%OUTPUT_DIR%\output_%INDEX%.json"
+    node metrics.js "%%a" > "%OUTPUT_DIR%\output_!INDEX!.json"
 
-    echo Output for URL %%a written to %OUTPUT_DIR%\output_%INDEX%.json
+    echo Output for URL %%a written to %OUTPUT_DIR%\output_!INDEX!.json
 
     :: Increment the index
     set /a INDEX+=1
