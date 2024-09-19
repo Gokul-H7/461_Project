@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+const fetch = require('node-fetch');
 
 // DEFINE INTERFACES
 
@@ -60,7 +60,10 @@ async function fetchRepositoryData(repoUrl: string): Promise<RepositoryData> {
     const repoName = repoUrl.replace('https://github.com/', '');
     const repoApiUrl = `https://api.github.com/repos/${repoName}`;
 
+    // Fetch repository details
     const repoResponse = await fetch(repoApiUrl, { headers });
+    if (!repoResponse.ok) throw new Error(`Failed to fetch repo data: ${repoResponse.statusText}`);
+
     const repoData = await repoResponse.json() as {
         name: string;
         open_issues_count: number;
@@ -68,26 +71,56 @@ async function fetchRepositoryData(repoUrl: string): Promise<RepositoryData> {
         license: { spdx_id: string } | null;
     };
 
-    const issuesResponse = await fetch(`${repoApiUrl}/issues?state=all`, { headers });
-    const issuesData = await issuesResponse.json() as Issue[];
+    // Initialize the issuesData array
+    const issuesData: Issue[] = [];
 
-    // Log the issuesData to check its structure
-    console.log('issuesData:', issuesData);
+    // Pagination for fetching issues
+    let page = 1;
+    let hasMoreIssues = true;
+    
+    while (hasMoreIssues) {
+        const issuesResponse = await fetch(`${repoApiUrl}/issues?state=all&page=${page}`, { headers });
+        if (!issuesResponse.ok) throw new Error(`Failed to fetch issues: ${issuesResponse.statusText}`);
+        
+        const pageIssues = await issuesResponse.json();
 
-    if (!Array.isArray(issuesData)) {
-        throw new Error('Expected issuesData to be an array');
+        // Ensure that pageIssues is an array
+        if (Array.isArray(pageIssues) && pageIssues.length > 0) {
+            issuesData.push(...pageIssues);
+            page++;
+        } else {
+            hasMoreIssues = false;
+        }
     }
 
-    const contributorsResponse = await fetch(`${repoApiUrl}/contributors`, { headers });
-    const contributorsData = await contributorsResponse.json() as { length: number }[];
+    // Fetch contributors
+    const contributorsData: { length: number }[] = [];
+    page = 1;
+    let hasMoreContributors = true;
 
+    while (hasMoreContributors) {
+        const contributorsResponse = await fetch(`${repoApiUrl}/contributors?page=${page}`, { headers });
+        if (!contributorsResponse.ok) throw new Error(`Failed to fetch contributors: ${contributorsResponse.statusText}`);
+
+        const pageContributors = await contributorsResponse.json();
+        if (Array.isArray(pageContributors) && pageContributors.length > 0) {
+            contributorsData.push(...pageContributors);
+            page++;
+        } else {
+            hasMoreContributors = false;
+        }
+    }
+
+    // Fetch files (contents)
     const filesResponse = await fetch(`${repoApiUrl}/contents`, { headers });
+    if (!filesResponse.ok) throw new Error(`Failed to fetch files: ${filesResponse.statusText}`);
+
     const filesData = await filesResponse.json() as { name: string }[];
 
     return {
         name: repoData.name,
         contributors: contributorsData.length,
-        issues: issuesData.map((issue: any) => ({
+        issues: issuesData.map(issue => ({
             state: issue.state,
             created_at: issue.created_at,
             closed_at: issue.closed_at,
@@ -96,7 +129,7 @@ async function fetchRepositoryData(repoUrl: string): Promise<RepositoryData> {
         pullRequests: repoData.open_issues_count,
         lastCommitDate: new Date(repoData.pushed_at),
         license: repoData.license ? repoData.license.spdx_id : 'No license',
-        files: filesData.map((file: any) => ({ fileName: file.name }))
+        files: filesData.map(file => ({ fileName: file.name }))
     };
 }
 
