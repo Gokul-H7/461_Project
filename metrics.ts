@@ -264,7 +264,7 @@ function calculateFinalScore(metrics: Metrics, weights: Weights): number {
 }
 
 // Main Function
-async function main(repoUrl: string) {
+async function calculateMetrics(repoUrl: string) {
     const data = await fetchRepositoryData(repoUrl);
 
     let startTime, endTime, elapsedTime;
@@ -329,4 +329,5 @@ async function main(repoUrl: string) {
 }
 
 // Example usage
-main("https://github.com/ece362-purdue/lab3-timers-IanKarlmann");
+//main("https://github.com/ece362-purdue/lab3-timers-IanKarlmann");
+calculateMetrics("https://github.com/Gokul-H7/Group27_461_Project");

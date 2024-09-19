@@ -235,7 +235,7 @@ function calculateFinalScore(metrics, weights) {
     return totalScore / totalWeight;
 }
 // Main Function
-function main(repoUrl) {
+function calculateMetrics(repoUrl) {
     return __awaiter(this, void 0, void 0, function () {
         var data, startTime, endTime, elapsedTime, latencyTimes, busFactor, correctness, rampUpTime, responsiveness, licenseCompatibility, metrics, weights, finalScore;
         return __generator(this, function (_a) {
@@ -298,4 +298,5 @@ function main(repoUrl) {
     });
 }
 // Example usage
-main("https://github.com/ece362-purdue/lab3-timers-IanKarlmann");
+//main("https://github.com/ece362-purdue/lab3-timers-IanKarlmann");
+calculateMetrics("https://github.com/Gokul-H7/Group27_461_Project");

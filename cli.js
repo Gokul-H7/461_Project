@@ -1,72 +1,68 @@
 "use strict";
-const { execSync } = require('child_process');  // Import execSync from child_process
-const fs = require('fs');  // Import fs for file handling
-const { performance } = require('perf_hooks');  // For latency calculation
-const { calculateMetrics } = require('./metric');  // Import the metrics function from metric.js (after transpiling)
-
+Object.defineProperty(exports, "__esModule", { value: true });
+var process = require("process");
+var child_process_1 = require("child_process");
+var metrics_1 = require("./metrics"); // Assuming you already have metric.ts transpiled
+var fs = require("fs");
 function install() {
     try {
         console.log("Installing dependencies...");
-        execSync('npm install', { stdio: 'inherit' }); // Replace 'pip install' with 'npm install' if using Node.js
+        (0, child_process_1.execSync)('npm install', { stdio: 'inherit' }); // You can also change this to pip or any package manager
         console.log("Dependencies installed successfully.");
         process.exit(0);
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error installing dependencies:", error);
         process.exit(1);
     }
 }
-
 function test() {
     try {
         console.log("Running tests...");
-        execSync('npm test', { stdio: 'inherit' }); // Adjust based on your test setup
-        const coverageOutput = execSync('npm run coverage', { stdio: 'inherit' }); // Modify based on your coverage tool
-        console.log(coverageOutput.toString());
+        (0, child_process_1.execSync)('npm test', { stdio: 'inherit' });
+        var coverageOutput = (0, child_process_1.execSync)('npm run coverage', { stdio: 'pipe' }).toString(); // Assuming you have a coverage script
+        console.log(coverageOutput);
         process.exit(0);
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error running tests:", error);
         process.exit(1);
     }
 }
-
 function urlFile(filePath) {
     try {
-        const urls = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);  // Read the file and split by line
-        const results = urls.map(url => {
+        var urls = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
+        var results = urls.map(function (url) {
             if (isValidUrl(url)) {
-                return calculateMetrics(url);  // Calculate the metrics for each URL
-            } else {
-                console.error(`Invalid URL: ${url}`);
+                return (0, metrics_1.calculateMetrics)(url); // Calculate metrics for each valid URL
+            }
+            else {
+                console.error("Invalid URL: ".concat(url));
                 return null;
             }
-        }).filter(result => result !== null);  // Filter out invalid results
-        
-        // Output each result as NDJSON
-        results.forEach(result => {
-            console.log(JSON.stringify(result));
+        }).filter(function (result) { return result !== null; });
+        results.forEach(function (result) {
+            console.log(JSON.stringify(result)); // Output NDJSON
         });
-
         process.exit(0);
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error processing the file:", error);
         process.exit(1);
     }
 }
-
 function isValidUrl(url) {
-    const npmjsPattern = /^https:\/\/www\.npmjs\.com\/package\/.+/;
-    const githubPattern = /^https:\/\/github\.com\/.+\/.+/;
+    var npmjsPattern = /^https:\/\/www\.npmjs\.com\/package\/.+/;
+    var githubPattern = /^https:\/\/github\.com\/.+\/.+/;
     return npmjsPattern.test(url) || githubPattern.test(url);
 }
-
 function main() {
-    const args = process.argv.slice(2);  // Slice out the first two default arguments
+    var args = process.argv.slice(2);
     if (args.length === 0) {
         console.error('No command provided.');
         process.exit(1);
     }
-
-    const command = args[0];
+    var command = args[0];
     switch (command) {
         case 'install':
             install();
@@ -75,14 +71,14 @@ function main() {
             test();
             break;
         default:
-            if (fs.existsSync(command)) {
-                urlFile(command);  // If it's a file, process it
-            } else {
-                console.error('Invalid command or URL file path.');
+            if (isValidUrl(command)) {
+                urlFile(command);
+            }
+            else {
+                console.error('Invalid command or URL');
                 process.exit(1);
             }
             break;
     }
 }
-
 main();
