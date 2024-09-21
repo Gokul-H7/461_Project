@@ -64,20 +64,20 @@ async function getRepoData() {
     const uniqueContributors = await fetchCommits(commitsUrl, headers);
     const {openIssues, closedIssues, issueDurations} = await fetchIssues(issuesUrl, headers);
 
-    // Bus Factor
-    const {busFactorValue, busFactorEnd} = await busFactor(uniqueContributors);
-
-    // Correctness
-    const {correctnessValue, correctnessEnd} = await correctness(openIssues, closedIssues);
-
-    // Responsiveness
-    const {responsivenessValue, responsivenessEnd} = await responsiveness(issueDurations);
-
-    // Ramp-Up Time
-    const {rampUpTimeValue, rampUpTimeEnd} = await rampUpTime(readme);
-
-    // License Compatability
-    const {licenseCompatabilityValue, licenseEnd} = await licensing(license);
+    // calculate metrics in parallel
+    const [
+      {busFactorValue, busFactorEnd},
+      {correctnessValue, correctnessEnd},
+      {responsivenessValue, responsivenessEnd},
+      {rampUpTimeValue, rampUpTimeEnd},
+      {licenseCompatabilityValue, licenseEnd}
+  ] = await Promise.all([
+      busFactor(uniqueContributors),
+      correctness(openIssues, closedIssues),
+      responsiveness(issueDurations),
+      rampUpTime(readme),
+      licensing(license)
+  ]);
 
     // calculate metrics
     const score = await calculateScore(busFactorValue, responsivenessValue, correctnessValue, rampUpTimeValue, licenseCompatabilityValue);
