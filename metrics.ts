@@ -1,366 +1,388 @@
-const fetch = require('node-fetch');
+import axios from 'axios';
+import * as dotenv from 'dotenv';
+import simpleGit from 'simple-git';
+import * as path from 'path';
+import * as fs from 'fs';
 
-// DEFINE INTERFACES
 
-// Define the structure of the data returned by the GitHub API
-interface RepositoryData {
-    name: string;
-    contributors: number;
-    issues: Issue[];
-    lastCommitDate: Date;
-    pullRequests: number;
-    license: string;
-    files: File[];
+// Load environment variables from .env file
+dotenv.config();
+
+
+// GLOBAL CONSTANTS
+
+const GITHUB_URL = process.argv[2];
+  // test: https://github.com/cloudinary/cloudinary_npm
+const ACCUMULATION = 0.975;
+const WEIGHT_BUS_FACTOR = 0.22;
+const WEIGHT_RESPONSIVENESS = 0.2;
+const WEIGHT_CORRECTNESS = 0.2;
+const WEIGHT_RAMP_UP_TIME = 0.2;
+const WEIGHT_LICENSING = 0.2;
+const GIT = simpleGit();
+
+
+// INTERFACES
+
+
+// MAIN FUNCTIONS
+
+function convertToApiUrl(githubUrl) {
+    return githubUrl.replace('github.com', 'api.github.com/repos');
 }
 
-// Define the structure of the data about Issues
-interface Issue {
-    state: string;
-    created_at: string;
-    closed_at: string | null;
-    labels: string[] | null;
+async function cloneRepo(githubUrl) {
+    const repoName = githubUrl.split('/').slice(-1)[0];
+    const repoPath = path.join(__dirname, repoName);
+    await GIT.clone(githubUrl, repoPath, ['--depth', '1']);
+
+    // console.log('Cloned repo to:', repoPath);
+    return repoPath;
+}
+  
+async function getRepoData() {
+  if (!GITHUB_URL) {
+    console.error('Please provide a GitHub URL as a command-line argument.');
+    return;
+  }
+  
+  const GITHUB_API_URL = convertToApiUrl(GITHUB_URL);
+  
+  try {
+
+  // fetch urls
+  const commitsUrl = `${GITHUB_API_URL}/commits`;
+  const issuesUrl = `${GITHUB_API_URL}/issues`;
+  const headers = {
+      'Accept': 'application/vnd.github.v3+json',
+      'Authorization': `token ${process.env.GITHUB_TOKEN}`
+  };
+
+      // Bus Factor
+      const busFactorStart = Date.now();
+      const uniqueContributors = await fetchCommits(commitsUrl, headers);
+      const busFactorValue = await busFactor(uniqueContributors);
+      const busFactorEnd = Date.now();
+
+      // Correctness
+      const correctnessStart = Date.now();
+      const {openIssues, closedIssues, issueDurations} = await fetchIssues(issuesUrl, headers);
+      const correctnessValue = await correctness(openIssues, closedIssues);
+      const correctnessEnd = Date.now();
+
+      // Responsiveness
+      const responsivenessStart = Date.now();
+      const responsivenessValue = await responsiveness(issueDurations);
+      const responsivenessEnd = Date.now();
+
+      // Ramp-Up Time
+      const rampUpTimeStart = Date.now();
+      const repoPath = await cloneRepo(GITHUB_URL);
+      const readme = await findReadme(repoPath);
+      const rampUpTimeValue = await rampUpTime(readme);
+      const rampUpTimeEnd = Date.now();
+
+      // License Compatability
+      const licenseStart = Date.now();
+      const license = await findLicense(repoPath, readme);
+      const licenseCompatabilityValue = await licensing(license);
+      const licenseEnd = Date.now();
+
+      // calculate metrics
+      const scoreStart = Date.now();
+      const score = await calculateScore(busFactorValue, responsivenessValue, correctnessValue, rampUpTimeValue, licenseCompatabilityValue);
+      const scoreEnd = Date.now();
+
+      // calculate time taken for each metric
+      const busFactorLatency = (busFactorEnd - busFactorStart) / 1000;
+      const correctnessLatency = (correctnessEnd - correctnessStart) / 1000;
+      const responsivenessLatency = (responsivenessEnd - responsivenessStart) / 1000;
+      const rampUpTimeLatency = (rampUpTimeEnd - rampUpTimeStart) / 1000;
+      const licenseCompatabilityLatency = (licenseEnd - licenseStart) / 1000;
+      const scoreLatency = (scoreEnd - scoreStart) / 1000;
+
+      // log data for testing
+      // console.log('Number of Commits:', totalCommits);
+      // console.log('Unique Contributors:', uniqueContributors);
+      // console.log('Open Issues:', openIssues);
+      // console.log('Closed Issues:', closedIssues);
+      // console.log('Issue Durations:', issueDurations);
+      // console.log('Readme:', readme);
+      // console.log('License:', license);
+
+       console.log('Bus Factor:', busFactorValue);
+       console.log('Bus Factor Latency:', busFactorLatency);
+       console.log('Responsiveness:', responsivenessValue);
+       console.log('Responsiveness Latency:', responsivenessLatency);
+       console.log('Correctness:', correctnessValue);
+       console.log('Correctness Latency:', correctnessLatency);
+       console.log('Ramp-Up Time:', rampUpTimeValue);
+       console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
+       console.log('License Compatability:', licenseCompatabilityValue);
+       console.log('License Compatability Latency:', licenseCompatabilityLatency);
+       console.log('Score:', score);
+       console.log('Score Latency:', scoreLatency);
+
+      return {
+        busFactorValue,
+        busFactorLatency,
+        responsivenessValue,
+        responsivenessLatency,
+        correctnessValue,
+        correctnessLatency,
+        rampUpTimeValue,
+        rampUpTimeLatency,
+        licenseCompatabilityValue,
+        licenseCompatabilityLatency,
+        score,
+        scoreLatency
+      };
+
+  } catch (error) {
+    console.error('Error fetching repo data:', error);
+  }
 }
 
-// Define the structure of the data about Files
-interface File {
-    fileName: string;
+
+// API FETCH FUNCTIONS
+
+async function fetchCommits(commitsUrl, headers) {
+  let page = 1;
+  let totalCommits = 0;
+  let uniqueContributors = new Map<string, number>();
+  let hasMoreCommits = true;
+
+  // Fetch all commits by going through each page
+  while (hasMoreCommits) {
+    const response = await axios.get(`${commitsUrl}?page=${page}&per_page=100`, { headers });
+    const commits = response.data;
+    totalCommits += commits.length;
+
+    // Add unique contributor names and number of times they appear
+    commits.forEach(commit => {
+      if (commit.author && commit.author.login) {
+          const login = commit.author.login;
+          if (uniqueContributors.has(login)) {
+              uniqueContributors.set(login, uniqueContributors.get(login)! + 1);
+          } else {
+              uniqueContributors.set(login, 1);
+          }
+      }
+  });
+
+    hasMoreCommits = commits.length === 100;
+    page++;
 }
 
-interface Metrics {
-    busFactor: number;
-    correctness: number;
-    rampUpTime: number;
-    responsiveness: number;
-    licenseCompatibility: number;
+return Array.from(uniqueContributors);
 }
 
-interface LatencyTimes {
-    busFactor: number;
-    correctness: number;
-    rampUpTime: number;
-    responsiveness: number;
-    licenseCompatibility: number;
-}
+async function fetchIssues(issuesUrl, headers) {
+  let page = 1;
+  let hasMoreIssues = true;
+  let openIssues = 0;
+  let closedIssues = 0;
+  let issueDurations: number[] = [];
 
-interface Weights {
-    busFactor: number;
-    correctness: number;
-    rampUpTime: number;
-    responsiveness: number;
-    licenseCompatibility: number;
-}
+  while (hasMoreIssues) {
+    const response = await axios.get(`${issuesUrl}?page=${page}&per_page=100&state=all`, { headers });
+    const issues = response.data;
 
-async function fetchRepositoryData(repoUrl: string): Promise<RepositoryData> {
-    const token = process.env.GITHUB_TOKEN;
-    const headers = {
-        'Authorization': `token ${token}`,
-        'Accept': 'application/vnd.github.v3+json'
-    };
-
-    const repoName = repoUrl.replace('https://github.com/', '');
-    const repoApiUrl = `https://api.github.com/repos/${repoName}`;
-
-    // Fetch repository details
-    const repoResponse = await fetch(repoApiUrl, { headers });
-    if (!repoResponse.ok) throw new Error(`Failed to fetch repo data: ${repoResponse.statusText}`);
-
-    const repoData = await repoResponse.json() as {
-        name: string;
-        open_issues_count: number;
-        pushed_at: string;
-        license: { spdx_id: string } | null;
-    };
-
-    // Initialize the issuesData array
-    const issuesData: Issue[] = [];
-
-    // Pagination for fetching issues
-    let page = 1;
-    let hasMoreIssues = true;
-    
-    while (hasMoreIssues) {
-        const issuesResponse = await fetch(`${repoApiUrl}/issues?state=all&page=${page}`, { headers });
-        if (!issuesResponse.ok) throw new Error(`Failed to fetch issues: ${issuesResponse.statusText}`);
-        
-        const pageIssues = await issuesResponse.json();
-
-        // Ensure that pageIssues is an array
-        if (Array.isArray(pageIssues) && pageIssues.length > 0) {
-            issuesData.push(...pageIssues);
-            page++;
-        } else {
-            hasMoreIssues = false;
-        }
-    }
-
-    // Fetch contributors
-    const contributorsData: { length: number }[] = [];
-    page = 1;
-    let hasMoreContributors = true;
-
-    while (hasMoreContributors) {
-        const contributorsResponse = await fetch(`${repoApiUrl}/contributors?page=${page}`, { headers });
-        if (!contributorsResponse.ok) throw new Error(`Failed to fetch contributors: ${contributorsResponse.statusText}`);
-
-        const pageContributors = await contributorsResponse.json();
-        if (Array.isArray(pageContributors) && pageContributors.length > 0) {
-            contributorsData.push(...pageContributors);
-            page++;
-        } else {
-            hasMoreContributors = false;
-        }
-    }
-
-    // Fetch files (contents)
-    const filesResponse = await fetch(`${repoApiUrl}/contents`, { headers });
-    if (!filesResponse.ok) throw new Error(`Failed to fetch files: ${filesResponse.statusText}`);
-
-    const filesData = await filesResponse.json() as { name: string }[];
-
-    return {
-        name: repoData.name,
-        contributors: contributorsData.length,
-        issues: issuesData.map(issue => ({
-            state: issue.state,
-            created_at: issue.created_at,
-            closed_at: issue.closed_at,
-            labels: issue.labels ? issue.labels.map((label: any) => label.name) : []
-        })),
-        pullRequests: repoData.open_issues_count,
-        lastCommitDate: new Date(repoData.pushed_at),
-        license: repoData.license ? repoData.license.spdx_id : 'No license',
-        files: filesData.map(file => ({ fileName: file.name }))
-    };
-}
-
-// CALCULATE METRICS
-
-/* Bus Factor:
-*   - Bus factor is a measure of how many contributors are critical to a project
-*       - Number of contributors
-*/
-function calculateBusFactor(data: RepositoryData): number {
-    let busFactor = 0;
-    for (let i = 1; i <= data.contributors; i++) {
-        busFactor += 0.1;
-        if (i == 1) {
-            break;
-        }
-    }
-    return busFactor;
-}
-
-/* Correctness:
-*   - Correctness is a measure of the reliability and stability of the codebase
-*       - Issues labeled as bugs
-*       - Open/closed issue ratio
-*/
-function calculateCorrectness(data: RepositoryData): number {
-    let correctness = 0;
-
-    // number of open bugs
-    const openBugIssues = data.issues.filter(issue => issue.state === 'open' && issue.labels && issue.labels.includes('bug')).length;
-
-    // open/closed issue ratio
-    const openIssues = data.issues.filter(issue => issue.state === 'open').length;
-    const closedIssues = data.issues.filter(issue => issue.state === 'closed').length;
-    const issueRatio = closedIssues > 0 ? openIssues / closedIssues : openIssues;
-
-    if(issueRatio == 0){
-        correctness = 1;
-    }
-    else if(issueRatio < 0.25){
-        correctness = 0.8;
-    }
-    else if(issueRatio < 0.5){
-        correctness = 0.6;
-    }
-    else if(issueRatio < 1){
-        correctness = 0.4;
-    }
-    else if(issueRatio > 1){
-        correctness = 0.2;
-    }
-
-    correctness = correctness * 1 / (1.15 ** openBugIssues);
-
-    return correctness;
-}
-
-/* Ramp Up Time:
-*   - Ramp up time is a measure of how much time is required for a new developer to become productive
-*       - Presence of documentation (e.g. README)
-*       - Size of codebase
-*/
-function calculateRampUpTime(data: RepositoryData): number {
-    let rampUpTimeScore = 0;
-
-    // Check for the presence of a README file
-    const hasReadme = data.files.some(file => file.fileName.toLowerCase() === 'readme.md' || file.fileName.toLowerCase() === 'readme');
-
-    if (hasReadme) {
-        rampUpTimeScore += 0.5;
-    }
-
-    // Additional logic for size of codebase can be added here
-
-    return rampUpTimeScore;
-}
-
-/* Responsiveness:
-*   - Responsiveness is a measure of how quickly maintainers respond to issues and pull requests
-*       - Time between open and close issue
-*       - Number of open issues outside a timeframe
-*/
-function calculateResponsiveness(data: RepositoryData): number {
-    const now = new Date();
-
-    // a) Measure time between issues open and close time
-    const closedIssues = data.issues.filter(issue => issue.state === 'closed');
-    let totalCloseTime = 0;
-    closedIssues.forEach(issue => {
-        if (issue.closed_at) {
-            const openTime = new Date(issue.created_at).getTime();
-            const closeTime = new Date(issue.closed_at).getTime();
-            totalCloseTime += (closeTime - openTime);
-        }
+    issues.forEach(issue => {
+      if (issue.closed_at) {
+        let createdAt = new Date(issue.created_at);
+        let closedAt = new Date(issue.closed_at);
+        let duration = (closedAt.getTime() - createdAt.getTime()) / (1000 * 3600 * 24);
+        issueDurations.push(duration);
+        closedIssues++;
+      }
+      else{
+        openIssues++;
+      }
     });
-    const averageCloseTime = closedIssues.length > 0 ? totalCloseTime / closedIssues.length : 0;
 
-    // b) Number of open issues older than 30 days
-    const openIssuesOlderThan30Days = data.issues.filter(issue => {
-        if (issue.state === 'open') {
-            const openTime = new Date(issue.created_at).getTime();
-            const daysOpen = (now.getTime() - openTime) / (1000 * 3600 * 24);
-            return daysOpen > 30;
-        }
-        return false;
-    }).length;
+    hasMoreIssues = issues.length === 100;
+    page++;
+  }
 
-    // Calculate responsiveness score
-    let responsiveness = 0;
-
-    if (averageCloseTime > 7 * 24 * 3600 * 1000) {
-        responsiveness = responsiveness + 0.5;
-    }
-    else if (averageCloseTime > 30 * 24 * 3600 * 1000) {
-        responsiveness = responsiveness + 0.25;
-    }
-
-    if(openIssuesOlderThan30Days < 1) {
-        responsiveness = responsiveness + 0.5;
-    }
-    else if(openIssuesOlderThan30Days < 3) {
-        responsiveness = responsiveness + 0.4;
-    }
-    else if(openIssuesOlderThan30Days < 5) {
-        responsiveness = responsiveness + 0.3;
-    }
-    else if(openIssuesOlderThan30Days < 10) {
-        responsiveness = responsiveness + 0.2;
-    }
-    else if(openIssuesOlderThan30Days < 25) {
-        responsiveness = responsiveness + 0.1;
-    }
-
-    return responsiveness;
+  return {
+    openIssues,
+    closedIssues,
+    issueDurations
+  };
 }
 
-/* License Compatibility:
-*   - License compatability measures how well the repository's license aligns with project requirements
-*   - License Type
-*/
-function calculateLicenseCompatibility(data: RepositoryData): number {
-    const compatibleLicenses = ["LGPL-2.1"];
-    return compatibleLicenses.includes(data.license) ? 1 : 0;
+// REPO SEARCH FUNCTIONS
+
+async function fileExists(filePath){
+  try {
+    await fs.promises.access(filePath, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-/* ASSIGN SCORE
-*   - Assign a score to each metric based on its value and weight
-*/
-function calculateFinalScore(metrics: Metrics, weights: Weights): number {
-    const totalScore = 
-        metrics.busFactor * weights.busFactor +
-        metrics.correctness * weights.correctness +
-        metrics.rampUpTime * weights.rampUpTime +
-        metrics.responsiveness * weights.responsiveness +
-        metrics.licenseCompatibility * weights.licenseCompatibility;
-    
-    const totalWeight = 
-        weights.busFactor +
-        weights.correctness +
-        weights.rampUpTime +
-        weights.responsiveness +
-        weights.licenseCompatibility;
-
-    return totalScore / totalWeight;
+async function findReadme(repoPath){
+  const entries = await fs.promises.readdir(repoPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.toLowerCase().startsWith('readme')) {
+      return path.join(repoPath, entry.name);
+    }
+  }
+  return null;
 }
 
-// Main Function
-async function calculateMetrics(repoUrl: string) {
-    const data = await fetchRepositoryData(repoUrl);
+async function findLicense(repoPath, readme){
+  // check for a license file
+  const entries = await fs.promises.readdir(repoPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.toLowerCase().startsWith('license')) {
+      const licensePath = path.join(repoPath, entry.name);
+      const licenseContent = await fs.promises.readFile(licensePath, 'utf8');
+      const license = identifyLicense(licenseContent);
+      if (license !== null) {
+        return license;
+      }
+    }
+  }
+  // check for a license in the readme
+  const readmeContent = await fs.promises.readFile(readme, 'utf8');
+  const readmeLicense = identifyLicense(readmeContent);
+  if (readmeLicense !== null) {
+    return readmeLicense;
+  }
 
-    let startTime, endTime, elapsedTime;
-
-    const latencyTimes: LatencyTimes = {
-        busFactor: 0,
-        correctness: 0,
-        rampUpTime: 0,
-        responsiveness: 0,
-        licenseCompatibility: 0
-    };
-
-    startTime = Date.now();
-    const busFactor = calculateBusFactor(data);
-    endTime = Date.now();
-    elapsedTime = (endTime - startTime) / 1000;
-    latencyTimes.busFactor = elapsedTime;
-
-    startTime = Date.now();
-    const correctness = calculateCorrectness(data);
-    endTime = Date.now();
-    elapsedTime = (endTime - startTime) / 1000;
-    latencyTimes.correctness = elapsedTime;
-
-    startTime = Date.now();
-    const rampUpTime = calculateRampUpTime(data);
-    endTime = Date.now();
-    elapsedTime = (endTime - startTime) / 1000;
-    latencyTimes.rampUpTime = elapsedTime;
-
-    startTime = Date.now();
-    const responsiveness = calculateResponsiveness(data);
-    endTime = Date.now();
-    elapsedTime = (endTime - startTime) / 1000;
-    latencyTimes.responsiveness = elapsedTime;
-
-    startTime = Date.now();
-    const licenseCompatibility = calculateLicenseCompatibility(data);
-    endTime = Date.now();
-    elapsedTime = (endTime - startTime) / 1000;
-    latencyTimes.licenseCompatibility = elapsedTime;
-
-    const metrics: Metrics = {
-        busFactor,
-        correctness,
-        rampUpTime,
-        responsiveness,
-        licenseCompatibility
-    };
-
-    const weights: Weights = {
-        busFactor: 0.2,
-        correctness: 0.2,
-        rampUpTime: 0.2,
-        responsiveness: 0.2,
-        licenseCompatibility: 0.2
-    };
-    
-    const finalScore = calculateFinalScore(metrics, weights);
-    console.log(`Final Score for ${data.name}: ${finalScore}`);
-    console.log(`Latency Times: ${JSON.stringify(latencyTimes)}`);
+  return null;
 }
 
-// Example usage
-//main("https://github.com/ece362-purdue/lab3-timers-IanKarlmann");
-calculateMetrics("https://github.com/Gokul-H7/Group27_461_Project");
+function identifyLicense(content){
+  const licensePatterns: { [key: string]: RegExp } = {
+    'MIT': /mit license/i,
+    'Apache 2.0': /apache license, version 2\.0/i,
+    'GPL v2.0': /gnu general public license, version 2/i,
+    'GPL v3.0': /gnu general public license, version 3/i,
+    'LGPL v2.1': /gnu lesser general public license, version 2\.1/i,
+    'LGPL v3.0': /gnu lesser general public license, version 3/i,
+    'BSD 2-Clause': /bsd 2-clause "simplified" license/i,
+    'BSD 3-Clause': /bsd 3-clause "new" or "revised" license/i,
+    'MPL 2.0': /mozilla public license, version 2\.0/i,
+    'CDDL 1.0': /common development and distribution license, version 1\.0/i,
+    'EPL 2.0': /eclipse public license, version 2\.0/i
+  };
+
+  for (const [license, pattern] of Object.entries(licensePatterns)) {
+    if (pattern.test(content)) {
+      return license;
+    }
+  }
+
+  return null;
+}
+
+// METRIC CALCULATION FUNCTIONS
+
+async function busFactor(uniqueContributors) {
+
+  // Sort contributors by number of commits
+  uniqueContributors.sort((a, b) => b[1] - a[1]);
+
+  let totalContributors = uniqueContributors.length;
+  let totalCommits = 0;
+  let cumulativeCommits = 0;
+  let cumulativeContributors = 0;
+
+  for (const [_, commits] of uniqueContributors) {
+    totalCommits += commits;
+  }
+
+  for (const [_, commits] of uniqueContributors) {
+      cumulativeCommits += commits;
+      cumulativeContributors++;
+
+      if (cumulativeCommits >= totalCommits * ACCUMULATION) {
+          break;
+      }
+  }
+
+  let busFactorValue = cumulativeContributors / totalContributors;
+
+  // test log statements
+  // console.log('Total Contributors:', totalContributors);
+
+  return busFactorValue;
+}
+
+async function responsiveness(issueDurations) {
+
+  let responsivenessValue = 1;
+
+  const sum = issueDurations.reduce((a, b) => a + b, 0);
+  const average = sum / issueDurations.length;
+  responsivenessValue = (1 - (average / 365));
+
+  // test log statements
+  // console.log('Ratio (open/total):', ratio);
+  // console.log('Average Duration (days):', average);
+
+  return responsivenessValue;
+}
+
+async function correctness(openIssues, closedIssues) {
+  let correctnessValue = 1;
+  let ratio = openIssues / (openIssues + closedIssues);
+  correctnessValue = 1 - ratio;
+
+  // test log statements
+  // console.log('Ratio (open/total):', ratio);
+
+  return correctnessValue;
+}
+
+async function rampUpTime(readme){
+  const readmeContent = await fs.promises.readFile(readme, 'utf8');
+  let rampUpTimeValue = 0;
+
+  const headings = [
+    /installation/i,
+    /usage/i,
+    /configuration/i,
+    /(faq|help)/i,
+    /resources/i
+  ];
+
+  let foundHeadings = 0;
+
+  for (const heading of headings) {
+    if (heading.test(readmeContent)) {
+      foundHeadings++;
+    }
+  }
+
+  // Calculate ramp-up time value based on the number of found headings
+  rampUpTimeValue = foundHeadings / headings.length;
+
+  return rampUpTimeValue;
+}
+
+async function licensing(license) {
+  if (license === null) {
+    return 0;
+  }
+  return 1;
+}
+
+async function calculateScore(busFactorValue, responsivenessValue, correctnessValue, rampUpTimeValue, licensingValue) {
+
+  let weightedBusFactor = busFactorValue * WEIGHT_BUS_FACTOR;
+  let weightedResponsiveness = responsivenessValue * WEIGHT_RESPONSIVENESS;
+  let weightedCorrectness = correctnessValue * WEIGHT_CORRECTNESS;
+  let weightedRampUpTime = rampUpTimeValue * WEIGHT_RAMP_UP_TIME;
+  let weightedLicensing = licensingValue * WEIGHT_LICENSING;
+  let sumWeights = WEIGHT_BUS_FACTOR + WEIGHT_RESPONSIVENESS + WEIGHT_CORRECTNESS + WEIGHT_RAMP_UP_TIME + WEIGHT_LICENSING;
+
+  let score = (weightedBusFactor + weightedResponsiveness + weightedCorrectness + weightedRampUpTime + weightedLicensing) / sumWeights;
+  return score;
+}
+  
+getRepoData();
