@@ -12,7 +12,6 @@ dotenv.config();
 // GLOBAL CONSTANTS
 
 const GITHUB_URL = process.argv[2];
-  // test: https://github.com/cloudinary/cloudinary_npm
 const ACCUMULATION = 0.975;
 const WEIGHT_BUS_FACTOR = 0.22;
 const WEIGHT_RESPONSIVENESS = 0.2;
@@ -20,9 +19,6 @@ const WEIGHT_CORRECTNESS = 0.2;
 const WEIGHT_RAMP_UP_TIME = 0.2;
 const WEIGHT_LICENSING = 0.2;
 const GIT = simpleGit();
-
-
-// INTERFACES
 
 
 // MAIN FUNCTIONS
@@ -33,7 +29,7 @@ function convertToApiUrl(githubUrl) {
 
 async function cloneRepo(githubUrl) {
     const repoName = githubUrl.split('/').slice(-1)[0];
-    const repoPath = path.join(__dirname, repoName);
+    const repoPath = path.join(__dirname, 'cloned_repo', repoName);
     await GIT.clone(githubUrl, repoPath, ['--depth', '1']);
 
     // console.log('Cloned repo to:', repoPath);
@@ -41,6 +37,7 @@ async function cloneRepo(githubUrl) {
 }
   
 async function getRepoData() {
+  const clockStart = Date.now();
   if (!GITHUB_URL) {
     console.error('Please provide a GitHub URL as a command-line argument.');
     return;
@@ -50,95 +47,89 @@ async function getRepoData() {
   
   try {
 
-  // fetch urls
-  const commitsUrl = `${GITHUB_API_URL}/commits`;
-  const issuesUrl = `${GITHUB_API_URL}/issues`;
-  const headers = {
-      'Accept': 'application/vnd.github.v3+json',
-      'Authorization': `token ${process.env.GITHUB_TOKEN}`
-  };
+    // fetch urls
+    const commitsUrl = `${GITHUB_API_URL}/commits`;
+    const issuesUrl = `${GITHUB_API_URL}/issues`;
+    const headers = {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `token ${process.env.GITHUB_TOKEN}`
+    };
 
-      // Bus Factor
-      const busFactorStart = Date.now();
-      const uniqueContributors = await fetchCommits(commitsUrl, headers);
-      const busFactorValue = await busFactor(uniqueContributors);
-      const busFactorEnd = Date.now();
+    // clone repo
+    const repoPath = await cloneRepo(GITHUB_URL);
+    const readme = await findReadme(repoPath);
+    const license = await findLicense(repoPath, readme);
 
-      // Correctness
-      const correctnessStart = Date.now();
-      const {openIssues, closedIssues, issueDurations} = await fetchIssues(issuesUrl, headers);
-      const correctnessValue = await correctness(openIssues, closedIssues);
-      const correctnessEnd = Date.now();
+    // Fetch API data
+    const uniqueContributors = await fetchCommits(commitsUrl, headers);
+    const {openIssues, closedIssues, issueDurations} = await fetchIssues(issuesUrl, headers);
 
-      // Responsiveness
-      const responsivenessStart = Date.now();
-      const responsivenessValue = await responsiveness(issueDurations);
-      const responsivenessEnd = Date.now();
+    // Bus Factor
+    const {busFactorValue, busFactorEnd} = await busFactor(uniqueContributors);
 
-      // Ramp-Up Time
-      const rampUpTimeStart = Date.now();
-      const repoPath = await cloneRepo(GITHUB_URL);
-      const readme = await findReadme(repoPath);
-      const rampUpTimeValue = await rampUpTime(readme);
-      const rampUpTimeEnd = Date.now();
+    // Correctness
+    const {correctnessValue, correctnessEnd} = await correctness(openIssues, closedIssues);
 
-      // License Compatability
-      const licenseStart = Date.now();
-      const license = await findLicense(repoPath, readme);
-      const licenseCompatabilityValue = await licensing(license);
-      const licenseEnd = Date.now();
+    // Responsiveness
+    const {responsivenessValue, responsivenessEnd} = await responsiveness(issueDurations);
 
-      // calculate metrics
-      const scoreStart = Date.now();
-      const score = await calculateScore(busFactorValue, responsivenessValue, correctnessValue, rampUpTimeValue, licenseCompatabilityValue);
-      const scoreEnd = Date.now();
+    // Ramp-Up Time
+    const {rampUpTimeValue, rampUpTimeEnd} = await rampUpTime(readme);
 
-      // calculate time taken for each metric
-      const busFactorLatency = (busFactorEnd - busFactorStart) / 1000;
-      const correctnessLatency = (correctnessEnd - correctnessStart) / 1000;
-      const responsivenessLatency = (responsivenessEnd - responsivenessStart) / 1000;
-      const rampUpTimeLatency = (rampUpTimeEnd - rampUpTimeStart) / 1000;
-      const licenseCompatabilityLatency = (licenseEnd - licenseStart) / 1000;
-      const scoreLatency = (scoreEnd - scoreStart) / 1000;
+    // License Compatability
+    const {licenseCompatabilityValue, licenseEnd} = await licensing(license);
 
-      // log data for testing
-      // console.log('Number of Commits:', totalCommits);
-      // console.log('Unique Contributors:', uniqueContributors);
-      // console.log('Open Issues:', openIssues);
-      // console.log('Closed Issues:', closedIssues);
-      // console.log('Issue Durations:', issueDurations);
-      // console.log('Readme:', readme);
-      // console.log('License:', license);
+    // calculate metrics
+    const score = await calculateScore(busFactorValue, responsivenessValue, correctnessValue, rampUpTimeValue, licenseCompatabilityValue);
+    const scoreEnd = Date.now();
 
-       console.log('Bus Factor:', busFactorValue);
-       console.log('Bus Factor Latency:', busFactorLatency);
-       console.log('Responsiveness:', responsivenessValue);
-       console.log('Responsiveness Latency:', responsivenessLatency);
-       console.log('Correctness:', correctnessValue);
-       console.log('Correctness Latency:', correctnessLatency);
-       console.log('Ramp-Up Time:', rampUpTimeValue);
-       console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
-       console.log('License Compatability:', licenseCompatabilityValue);
-       console.log('License Compatability Latency:', licenseCompatabilityLatency);
-       console.log('Score:', score);
-       console.log('Score Latency:', scoreLatency);
+    // calculate time taken for each metric
+    const busFactorLatency = (busFactorEnd - clockStart) / 1000;
+    const correctnessLatency = (correctnessEnd - clockStart) / 1000;
+    const responsivenessLatency = (responsivenessEnd - clockStart) / 1000;
+    const rampUpTimeLatency = (rampUpTimeEnd - clockStart) / 1000;
+    const licenseCompatabilityLatency = (licenseEnd - clockStart) / 1000;
+    const scoreLatency = (scoreEnd - clockStart) / 1000;
 
-      return {
-        busFactorValue,
-        busFactorLatency,
-        responsivenessValue,
-        responsivenessLatency,
-        correctnessValue,
-        correctnessLatency,
-        rampUpTimeValue,
-        rampUpTimeLatency,
-        licenseCompatabilityValue,
-        licenseCompatabilityLatency,
-        score,
-        scoreLatency
-      };
+    // log data for testing
+    // console.log('Number of Commits:', totalCommits);
+    // console.log('Unique Contributors:', uniqueContributors);
+    // console.log('Open Issues:', openIssues);
+    // console.log('Closed Issues:', closedIssues);
+    // console.log('Issue Durations:', issueDurations);
+    // console.log('Readme:', readme);
+    // console.log('License:', license);
 
-  } catch (error) {
+    // console.log('Bus Factor:', busFactorValue);
+    // console.log('Bus Factor Latency:', busFactorLatency);
+    // console.log('Responsiveness:', responsivenessValue);
+    // console.log('Responsiveness Latency:', responsivenessLatency);
+    // console.log('Correctness:', correctnessValue);
+    // console.log('Correctness Latency:', correctnessLatency);
+    // console.log('Ramp-Up Time:', rampUpTimeValue);
+    // console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
+    // console.log('License Compatability:', licenseCompatabilityValue);
+    // console.log('License Compatability Latency:', licenseCompatabilityLatency);
+    // console.log('Score:', score);
+    // console.log('Score Latency:', scoreLatency);
+
+    return {
+      busFactorValue,
+      busFactorLatency,
+      responsivenessValue,
+      responsivenessLatency,
+      correctnessValue,
+      correctnessLatency,
+      rampUpTimeValue,
+      rampUpTimeLatency,
+      licenseCompatabilityValue,
+      licenseCompatabilityLatency,
+      score,
+      scoreLatency
+    };
+
+  } 
+  catch (error) {
     console.error('Error fetching repo data:', error);
   }
 }
@@ -310,7 +301,9 @@ async function busFactor(uniqueContributors) {
   // test log statements
   // console.log('Total Contributors:', totalContributors);
 
-  return busFactorValue;
+  const busFactorEnd = Date.now();
+
+  return {busFactorValue, busFactorEnd};
 }
 
 async function responsiveness(issueDurations) {
@@ -325,7 +318,9 @@ async function responsiveness(issueDurations) {
   // console.log('Ratio (open/total):', ratio);
   // console.log('Average Duration (days):', average);
 
-  return responsivenessValue;
+  const responsivenessEnd = Date.now();
+
+  return {responsivenessValue, responsivenessEnd};
 }
 
 async function correctness(openIssues, closedIssues) {
@@ -336,7 +331,9 @@ async function correctness(openIssues, closedIssues) {
   // test log statements
   // console.log('Ratio (open/total):', ratio);
 
-  return correctnessValue;
+  const correctnessEnd = Date.now();
+
+  return {correctnessValue, correctnessEnd};
 }
 
 async function rampUpTime(readme){
@@ -362,14 +359,22 @@ async function rampUpTime(readme){
   // Calculate ramp-up time value based on the number of found headings
   rampUpTimeValue = foundHeadings / headings.length;
 
-  return rampUpTimeValue;
+  const rampUpTimeEnd = Date.now();
+
+  return {rampUpTimeValue, rampUpTimeEnd};
 }
 
 async function licensing(license) {
+
+  let licenseCompatabilityValue = 1;
   if (license === null) {
-    return 0;
+    const licenseEnd = Date.now();
+    licenseCompatabilityValue = 0;
+    return {licenseCompatabilityValue, licenseEnd};
   }
-  return 1;
+
+  const licenseEnd = Date.now();
+  return {licenseCompatabilityValue, licenseEnd};
 }
 
 async function calculateScore(busFactorValue, responsivenessValue, correctnessValue, rampUpTimeValue, licensingValue) {
