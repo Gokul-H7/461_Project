@@ -1,9 +1,51 @@
 #!/bin/bash
 
-if [ "$1" == "install" ]; then
-  npm install
-  exit 0
-fi
+arg1=$1
+
+if [ "$arg1" == "install" ]; then
+    npm init -y
+    if [ $? -ne 0 ]; then
+        echo "npm init failed"
+        exit 1
+    fi
+
+    npm install typescript --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install typescript failed"
+        exit 1
+    fi
+
+    npm install @types/node --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install @types/node failed"
+        exit 1
+    fi
+
+    npm install fs --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install fs failed"
+        exit 1
+    fi
+
+    npm install axios --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install axios failed"
+        exit 1
+    fi
+
+    npm install dotenv --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install dotenv failed"
+        exit 1
+    fi
+
+    npm install simple-git --save-dev
+    if [ $? -ne 0 ]; then
+        echo "npm install simple-git failed"
+        exit 1
+    fi
+
+    exit 0
 
 if [ "$1" == "test" ]; then
   URL_FILE="test_cases.txt"
@@ -46,26 +88,9 @@ if [ ! -f "$URL_FILE" ]; then
   exit 1
 fi
 
-# Directory to store outputs
-OUTPUT_DIR="outputs"
-mkdir -p "$OUTPUT_DIR"
-
-# Iterate through URLs in the file and process them
-INDEX=1
-while IFS= read -r URL; do
-  echo "Processing URL: $URL"
-
-  # Run the metrics code on the URL and save the output
-  node metrics.js "$URL" > "$OUTPUT_DIR/output_$INDEX.json"
-
-  echo "Output for URL $URL written to $OUTPUT_DIR/output_$INDEX.json"
-  INDEX=$((INDEX + 1))
-done < "$URL_FILE"
+npx tsc cli.ts
+node cli.js $1
 
 echo "Completed processing all URLs."
 exit 0
-
-
-# arg1=$1
-# tsc cli.ts
-# node cli.js "$arg1"
+fi
