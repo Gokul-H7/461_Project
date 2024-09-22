@@ -1,87 +1,91 @@
 @echo off
-setlocal EnableDelayedExpansion
+setlocal enabledelayedexpansion
 
-:: Handle the "install" command to install npm dependencies
+rem Main script
 if "%1"=="install" (
-    echo Installing dependencies...
-    npm install
-    exit /b 0
-)
-
-:: Handle the "test" command
-if "%1"=="test" (
-    set "URL_FILE=test_cases.txt"
-    
-    if not exist "%URL_FILE%" (
-        echo Error: File "%URL_FILE%" does not exist.
+    call npm init -y
+    if %errorlevel% neq 0 (
+        echo npm init failed
         exit /b 1
     )
 
-    :: Create the directory to store outputs
-    set "OUTPUT_DIR=test_outputs"
-    if not exist "%OUTPUT_DIR%" (
-        mkdir "%OUTPUT_DIR%"
+    call npm install typescript --save-dev
+    if %errorlevel% neq 0 (
+        echo npm install typescript failed
+        exit /b 1
     )
 
-    :: Initialize index
-    set /a INDEX=1
-
-    :: Read each line (URL) from the file and process it
-    for /f "delims=" %%a in (%URL_FILE%) do (
-        echo Processing test case #!INDEX! with URL: %%a
-
-        :: Run the Node.js script and save output to a file
-        node metrics.js "%%a" > "%OUTPUT_DIR%\output_!INDEX!.json"
-
-        echo Output for test case #!INDEX! written to %OUTPUT_DIR%\output_!INDEX!.json
-
-        :: Increment the index
-        set /a INDEX+=1
-
-        :: Stop after 20 test cases
-        if !INDEX! gtr 20 (
-            goto :done
-        )
+    call npm install @types/node --save-dev
+    if %errorlevel% neq 0 (
+        echo npm install @types/node failed
+        exit /b 1
     )
-    :done
-    echo Completed running 20 test cases.
+
+    call npm install fs --save-dev
+    if %errorlevel% neq 0 (
+        echo npm install fs failed
+        exit /b 1
+    )
+
+    call npm install axios --save-dev
+    if %errorlevel% neq 0 (
+        echo npm install axios failed
+        exit /b 1
+    )
+
+    call npm install dotenv --save-dev
+    if %errorlevel% neq 0 (
+        echo npm install dotenv failed
+        exit /b 1
+    )
+
+    call npm install simple-git --save-dev
+    if %errorlevel% neq 0 (
+        echo npm install simple-git failed
+        exit /b 1
+    )
+
+    exit /b 0
+) else if "%1"=="test" (
+    echo Testing...
+    rem Add your test command here when ready
+    exit /b 0
+) else (
+    if "%1"=="" (
+        echo Usage: %0 ^{install^|test^|url_file_path^}
+        exit /b 1
+    )
+
+    rem Check if %1 is a valid file path and ends with .txt
+    if not exist "%1" (
+        echo File path "%1" does not exist.
+        exit /b 1
+    )
+
+    rem Compile the TypeScript file
+    call npx tsc cli.ts
+    if %errorlevel% neq 0 (
+        echo TypeScript compilation failed.
+        exit /b 1
+    )
+
+    rd /s /q cloned_repo 2>nul
+    del /q output.json 2>nul
+
+    rem Run the compiled JS file with the given URL file path
+    call node cli.js "%1"
+    if %errorlevel% neq 0 (
+        echo Failed to execute cli.js.
+        exit /b 1
+    )
+
+    rem Output the contents of output.json to the command line
+    if exist output.json (
+        type output.json
+    ) else (
+        echo output.json not found.
+        exit /b 1
+    )
+
     exit /b 0
 )
-
-:: Handle running with a specific URL file
-set "URL_FILE=%1"
-
-if not exist "%URL_FILE%" (
-    echo Error: File "%URL_FILE%" does not exist.
-    exit /b 1
-)
-
-:: Create the directory to store outputs
-set "OUTPUT_DIR=outputs"
-if not exist "%OUTPUT_DIR%" (
-    mkdir "%OUTPUT_DIR%"
-)
-
-:: Initialize index
-set /a INDEX=1
-
-:: Read each line (URL) from the file and process it
-for /f "delims=" %%a in (%URL_FILE%) do (
-    echo Processing URL: %%a
-
-    :: Run the Node.js script and save output to a file
-    node metrics.js "%%a" > "%OUTPUT_DIR%\output_!INDEX!.json"
-
-    echo Output for URL %%a written to %OUTPUT_DIR%\output_!INDEX!.json
-
-    :: Increment the index
-    set /a INDEX+=1
-)
-
-echo Completed processing all URLs.
-exit /b 0
-
-
-::set arg1=%1
-::call tsc cli.ts
-::call node cli.js %arg1%

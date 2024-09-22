@@ -40,7 +40,7 @@ const formatMetrics = (url: string, metrics: any) => ({
 // Main function to read URLs, get metrics, and write them to NDJSON
 async function writeMetricsToFile(filePath: string) {
   const urls = await readUrlsFromFile(filePath);
-  const outputFilePath = 'output.ndjson';
+  const outputFilePath = 'output.json';
   const writeStream = fs.createWriteStream(outputFilePath, { flags: 'a' });
 
   for (const url of urls) {
@@ -73,6 +73,7 @@ function main() {
     writeMetricsToFile(inputArg).catch(console.error);
   } else {
     console.error('Invalid command. Please provide a valid file path or use the word "test" as input.');
+    process.exit(1);
   }
 }
 

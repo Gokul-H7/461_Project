@@ -78,11 +78,18 @@ case "$1" in
         fi
 
         rm -rf cloned_repo
-        rm -f output.ndjson
+        rm -f output.json
         # Run the compiled JS file with the given URL file path
         node cli.js "$1"
         if [ $? -ne 0 ]; then
             echo "Failed to execute cli.js."
+            exit 1
+        fi
+
+        if [ -f output.json ]; then
+            cat output.json
+        else
+            echo "output.json not found."
             exit 1
         fi
 

@@ -125,7 +125,7 @@ function writeMetricsToFile(filePath) {
                 case 0: return [4 /*yield*/, readUrlsFromFile(filePath)];
                 case 1:
                     urls = _a.sent();
-                    outputFilePath = 'output.ndjson';
+                    outputFilePath = 'output.json';
                     writeStream = fs.createWriteStream(outputFilePath, { flags: 'a' });
                     _i = 0, urls_1 = urls;
                     _a.label = 2;
@@ -172,6 +172,7 @@ function main() {
     }
     else {
         console.error('Invalid command. Please provide a valid file path or use the word "test" as input.');
+        process.exit(1);
     }
 }
 // Entry point of the script
