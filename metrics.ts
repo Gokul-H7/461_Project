@@ -161,7 +161,21 @@ export async function getRepoData(githubUrl: string) {
 
   } 
   catch (error) {
-    console.error('Error fetching repo data:', error);
+    console.log('Error fetching repo data for ', githubUrl);
+    return {
+      busFactorValue: -1,
+      busFactorLatency: -1,
+      responsivenessValue: -1,
+      responsivenessLatency: -1,
+      correctnessValue: -1,
+      correctnessLatency: -1,
+      rampUpTimeValue: -1,
+      rampUpTimeLatency: -1,
+      licenseCompatabilityValue: -1,
+      licenseCompatabilityLatency: -1,
+      score: -1,
+      scoreLatency: -1
+    };
   }
 }
 

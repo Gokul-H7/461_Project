@@ -212,8 +212,21 @@ function getRepoData(githubUrl) {
                         }];
                 case 11:
                     error_2 = _h.sent();
-                    console.error('Error fetching repo data:', error_2);
-                    return [3 /*break*/, 12];
+                    console.log('Error fetching repo data for ', githubUrl);
+                    return [2 /*return*/, {
+                            busFactorValue: -1,
+                            busFactorLatency: -1,
+                            responsivenessValue: -1,
+                            responsivenessLatency: -1,
+                            correctnessValue: -1,
+                            correctnessLatency: -1,
+                            rampUpTimeValue: -1,
+                            rampUpTimeLatency: -1,
+                            licenseCompatabilityValue: -1,
+                            licenseCompatabilityLatency: -1,
+                            score: -1,
+                            scoreLatency: -1
+                        }];
                 case 12: return [2 /*return*/];
             }
         });
