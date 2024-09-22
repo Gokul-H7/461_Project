@@ -109,20 +109,19 @@ function cloneRepo(githubUrl) {
         });
     });
 }
-function getRepoData() {
+function getRepoData(githubUrl) {
     return __awaiter(this, void 0, void 0, function () {
-        var clockStart, githubUrl, npmGithubUrl, GITHUB_API_URL, commitsUrl, issuesUrl, headers, repoPath, readme, license, uniqueContributors, _a, openIssues, closedIssues, issueDurations, _b, _c, busFactorValue, busFactorEnd, _d, correctnessValue, correctnessEnd, _e, responsivenessValue, responsivenessEnd, _f, rampUpTimeValue, rampUpTimeEnd, _g, licenseCompatabilityValue, licenseEnd, score, scoreEnd, busFactorLatency, correctnessLatency, responsivenessLatency, rampUpTimeLatency, licenseCompatabilityLatency, scoreLatency, error_2;
+        var clockStart, npmGithubUrl, GITHUB_API_URL, commitsUrl, issuesUrl, headers, repoPath, readme, license, uniqueContributors, _a, openIssues, closedIssues, issueDurations, _b, _c, busFactorValue, busFactorEnd, _d, correctnessValue, correctnessEnd, _e, responsivenessValue, responsivenessEnd, _f, rampUpTimeValue, rampUpTimeEnd, _g, licenseCompatabilityValue, licenseEnd, score, scoreEnd, busFactorLatency, correctnessLatency, responsivenessLatency, rampUpTimeLatency, licenseCompatabilityLatency, scoreLatency, error_2;
         return __generator(this, function (_h) {
             switch (_h.label) {
                 case 0:
                     clockStart = Date.now();
-                    if (!GITHUB_URL) {
+                    if (!githubUrl) {
                         console.error('Please provide a GitHub URL as a command-line argument.');
                         return [2 /*return*/];
                     }
-                    githubUrl = GITHUB_URL;
-                    if (!GITHUB_URL.includes('npmjs.com')) return [3 /*break*/, 2];
-                    return [4 /*yield*/, getGithubUrlFromNpm(GITHUB_URL)];
+                    if (!githubUrl.includes('npmjs.com')) return [3 /*break*/, 2];
+                    return [4 /*yield*/, getGithubUrlFromNpm(githubUrl)];
                 case 1:
                     npmGithubUrl = _h.sent();
                     if (npmGithubUrl) {
@@ -524,4 +523,4 @@ function calculateScore(busFactorValue, responsivenessValue, correctnessValue, r
         });
     });
 }
-getRepoData();
+getRepoData(GITHUB_URL);

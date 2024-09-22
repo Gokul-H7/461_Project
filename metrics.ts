@@ -59,17 +59,15 @@ async function cloneRepo(githubUrl: string) {
     return repoPath;
 }
   
-async function getRepoData() {
+async function getRepoData(githubUrl: string) {
   const clockStart = Date.now();
-  if (!GITHUB_URL) {
+  if (!githubUrl) {
     console.error('Please provide a GitHub URL as a command-line argument.');
     return;
   }
 
-  let githubUrl = GITHUB_URL;
-
-  if (GITHUB_URL.includes('npmjs.com')) {
-      const npmGithubUrl = await getGithubUrlFromNpm(GITHUB_URL);
+  if (githubUrl.includes('npmjs.com')) {
+      const npmGithubUrl = await getGithubUrlFromNpm(githubUrl);
       if (npmGithubUrl) {
           githubUrl = npmGithubUrl;
       } else {
@@ -429,5 +427,5 @@ async function calculateScore(busFactorValue: number, responsivenessValue: numbe
   let score = (weightedBusFactor + weightedResponsiveness + weightedCorrectness + weightedRampUpTime + weightedLicensing) / sumWeights;
   return score;
 }
-  
-getRepoData();
+
+getRepoData(GITHUB_URL);
