@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getRepoData = getRepoData;
 var axios_1 = require("axios");
 var dotenv = require("dotenv");
 var simple_git_1 = require("simple-git");
@@ -44,7 +45,6 @@ var fs = require("fs");
 // Load environment variables from .env file
 dotenv.config();
 // GLOBAL CONSTANTS
-var GITHUB_URL = process.argv[2];
 var ACCUMULATION = 0.975;
 var WEIGHT_BUS_FACTOR = 0.22;
 var WEIGHT_RESPONSIVENESS = 0.2;
@@ -117,7 +117,7 @@ function getRepoData(githubUrl) {
                 case 0:
                     clockStart = Date.now();
                     if (!githubUrl) {
-                        console.error('Please provide a GitHub URL as a command-line argument.');
+                        console.error(githubUrl, ' is not a valid link');
                         return [2 /*return*/];
                     }
                     if (!githubUrl.includes('npmjs.com')) return [3 /*break*/, 2];
@@ -184,18 +184,18 @@ function getRepoData(githubUrl) {
                     // console.log('Issue Durations:', issueDurations);
                     // console.log('Readme:', readme);
                     // console.log('License:', license);
-                    console.log('Bus Factor:', busFactorValue);
-                    console.log('Bus Factor Latency:', busFactorLatency);
-                    console.log('Responsiveness:', responsivenessValue);
-                    console.log('Responsiveness Latency:', responsivenessLatency);
-                    console.log('Correctness:', correctnessValue);
-                    console.log('Correctness Latency:', correctnessLatency);
-                    console.log('Ramp-Up Time:', rampUpTimeValue);
-                    console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
-                    console.log('License Compatability:', licenseCompatabilityValue);
-                    console.log('License Compatability Latency:', licenseCompatabilityLatency);
-                    console.log('Score:', score);
-                    console.log('Score Latency:', scoreLatency);
+                    // console.log('Bus Factor:', busFactorValue);
+                    // console.log('Bus Factor Latency:', busFactorLatency);
+                    // console.log('Responsiveness:', responsivenessValue);
+                    // console.log('Responsiveness Latency:', responsivenessLatency);
+                    // console.log('Correctness:', correctnessValue);
+                    // console.log('Correctness Latency:', correctnessLatency);
+                    // console.log('Ramp-Up Time:', rampUpTimeValue);
+                    // console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
+                    // console.log('License Compatability:', licenseCompatabilityValue);
+                    // console.log('License Compatability Latency:', licenseCompatabilityLatency);
+                    // console.log('Score:', score);
+                    // console.log('Score Latency:', scoreLatency);
                     return [2 /*return*/, {
                             busFactorValue: busFactorValue,
                             busFactorLatency: busFactorLatency,
@@ -523,4 +523,3 @@ function calculateScore(busFactorValue, responsivenessValue, correctnessValue, r
         });
     });
 }
-getRepoData(GITHUB_URL);

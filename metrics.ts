@@ -11,7 +11,6 @@ dotenv.config();
 
 // GLOBAL CONSTANTS
 
-const GITHUB_URL = process.argv[2];
 const ACCUMULATION = 0.975;
 const WEIGHT_BUS_FACTOR = 0.22;
 const WEIGHT_RESPONSIVENESS = 0.2;
@@ -59,10 +58,10 @@ async function cloneRepo(githubUrl: string) {
     return repoPath;
 }
   
-async function getRepoData(githubUrl: string) {
+export async function getRepoData(githubUrl: string) {
   const clockStart = Date.now();
   if (!githubUrl) {
-    console.error('Please provide a GitHub URL as a command-line argument.');
+    console.error(githubUrl, ' is not a valid link');
     return;
   }
 
@@ -132,18 +131,18 @@ async function getRepoData(githubUrl: string) {
     // console.log('Readme:', readme);
     // console.log('License:', license);
 
-    console.log('Bus Factor:', busFactorValue);
-    console.log('Bus Factor Latency:', busFactorLatency);
-    console.log('Responsiveness:', responsivenessValue);
-    console.log('Responsiveness Latency:', responsivenessLatency);
-    console.log('Correctness:', correctnessValue);
-    console.log('Correctness Latency:', correctnessLatency);
-    console.log('Ramp-Up Time:', rampUpTimeValue);
-    console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
-    console.log('License Compatability:', licenseCompatabilityValue);
-    console.log('License Compatability Latency:', licenseCompatabilityLatency);
-    console.log('Score:', score);
-    console.log('Score Latency:', scoreLatency);
+    // console.log('Bus Factor:', busFactorValue);
+    // console.log('Bus Factor Latency:', busFactorLatency);
+    // console.log('Responsiveness:', responsivenessValue);
+    // console.log('Responsiveness Latency:', responsivenessLatency);
+    // console.log('Correctness:', correctnessValue);
+    // console.log('Correctness Latency:', correctnessLatency);
+    // console.log('Ramp-Up Time:', rampUpTimeValue);
+    // console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
+    // console.log('License Compatability:', licenseCompatabilityValue);
+    // console.log('License Compatability Latency:', licenseCompatabilityLatency);
+    // console.log('Score:', score);
+    // console.log('Score Latency:', scoreLatency);
 
     return {
       busFactorValue,
@@ -427,5 +426,3 @@ async function calculateScore(busFactorValue: number, responsivenessValue: numbe
   let score = (weightedBusFactor + weightedResponsiveness + weightedCorrectness + weightedRampUpTime + weightedLicensing) / sumWeights;
   return score;
 }
-
-getRepoData(GITHUB_URL);
