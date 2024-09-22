@@ -103,18 +103,18 @@ function readUrlsFromFile(filePath) {
 // Function to format and round the metrics, with NetScore at the end
 var formatMetrics = function (url, metrics) { return ({
     URL: url,
-    NetScore: metrics.score.toFixed(1),
-    NetScore_Latency: metrics.scoreLatency.toFixed(3),
-    RampUp: metrics.rampUpTimeValue.toFixed(1),
-    RampUp_Latency: metrics.rampUpTimeLatency.toFixed(3),
-    Correctness: metrics.correctnessValue.toFixed(1),
-    Correctness_Latency: metrics.correctnessLatency.toFixed(3),
-    BusFactor: metrics.busFactorValue.toFixed(1),
-    BusFactor_Latency: metrics.busFactorLatency.toFixed(3),
-    ResponsiveMaintainer: metrics.responsivenessValue.toFixed(1),
-    ResponsiveMaintainer_Latency: metrics.responsivenessLatency.toFixed(3),
-    License: metrics.licenseCompatabilityValue.toFixed(1),
-    License_Latency: metrics.licenseCompatabilityLatency.toFixed(3)
+    NetScore: parseFloat(metrics.score.toFixed(1)),
+    NetScore_Latency: parseFloat(metrics.scoreLatency.toFixed(3)),
+    RampUp: parseFloat(metrics.rampUpTimeValue.toFixed(1)),
+    RampUp_Latency: parseFloat(metrics.rampUpTimeLatency.toFixed(3)),
+    Correctness: parseFloat(metrics.correctnessValue.toFixed(1)),
+    Correctness_Latency: parseFloat(metrics.correctnessLatency.toFixed(3)),
+    BusFactor: parseFloat(metrics.busFactorValue.toFixed(1)),
+    BusFactor_Latency: parseFloat(metrics.busFactorLatency.toFixed(3)),
+    ResponsiveMaintainer: parseFloat(metrics.responsivenessValue.toFixed(1)),
+    ResponsiveMaintainer_Latency: parseFloat(metrics.responsivenessLatency.toFixed(3)),
+    License: parseFloat(metrics.licenseCompatabilityValue.toFixed(1)),
+    License_Latency: parseFloat(metrics.licenseCompatabilityLatency.toFixed(3))
 }); };
 // Main function to read URLs, get metrics, and write them to NDJSON
 function writeMetricsToFile(filePath) {
