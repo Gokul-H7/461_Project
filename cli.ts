@@ -1,87 +1,80 @@
-import * as process from 'process';
-import { execSync } from 'child_process'
-import { calculateMetrics } from './metrics';  // Assuming you already have metric.ts transpiled
+import { getRepoData } from './metrics';
 import * as fs from 'fs';
+import * as readline from 'readline';
 
-function install(): void {
-    try {
-        console.log("Installing dependencies...");
-        execSync('npm install', { stdio: 'inherit' });  // You can also change this to pip or any package manager
-        console.log("Dependencies installed successfully.");
-        process.exit(0);
-    } catch (error) {
-        console.error("Error installing dependencies:", error);
-        process.exit(1);
+// Function to read URLs from the file
+async function readUrlsFromFile(filePath: string): Promise<string[]> {
+  const fileStream = fs.createReadStream(filePath);
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity
+  });
+
+  const urls: string[] = [];
+  for await (const line of rl) {
+    if (line.trim()) {
+      urls.push(line.trim()); // Add the URL if the line is not empty
     }
+  }
+
+  return urls;
 }
 
-function test(): void {
+// Function to format and round the metrics, with NetScore at the end
+const formatMetrics = (url: string, metrics: any) => ({
+  URL: url,
+  NetScore: metrics.score.toFixed(1),
+  NetScore_Latency: metrics.scoreLatency.toFixed(3),
+  RampUp: metrics.rampUpTimeValue.toFixed(1),
+  RampUp_Latency: metrics.rampUpTimeLatency.toFixed(3),
+  Correctness: metrics.correctnessValue.toFixed(1),
+  Correctness_Latency: metrics.correctnessLatency.toFixed(3),
+  BusFactor: metrics.busFactorValue.toFixed(1),
+  BusFactor_Latency: metrics.busFactorLatency.toFixed(3),
+  ResponsiveMaintainer: metrics.responsivenessValue.toFixed(1),
+  ResponsiveMaintainer_Latency: metrics.responsivenessLatency.toFixed(3),
+  License: metrics.licenseCompatabilityValue.toFixed(1),
+  License_Latency: metrics.licenseCompatabilityLatency.toFixed(3)
+});
+
+// Main function to read URLs, get metrics, and write them to NDJSON
+async function writeMetricsToFile(filePath: string) {
+  const urls = await readUrlsFromFile(filePath);
+  const outputFilePath = 'output.ndjson';
+  const writeStream = fs.createWriteStream(outputFilePath, { flags: 'a' });
+
+  for (const url of urls) {
     try {
-        console.log("Running tests...");
-        execSync('npm test', { stdio: 'inherit' });
-        const coverageOutput = execSync('npm run coverage', { stdio: 'pipe' }).toString();  // Assuming you have a coverage script
-        console.log(coverageOutput);
-        process.exit(0);
+      const metrics = await getRepoData(url);
+      const formattedMetrics = formatMetrics(url, metrics);
+      writeStream.write(JSON.stringify(formattedMetrics) + '\n');
     } catch (error) {
-        console.error("Error running tests:", error);
-        process.exit(1);
+      console.error(`Failed to fetch metrics for ${url}:`, error);
     }
+  }
+
+  writeStream.end();
+  console.log('Metrics written to', outputFilePath);
 }
 
-function urlFile(filePath: string): void {
-    try {
-        const urls = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
-        const results = urls.map(url => {
-            if (isValidUrl(url)) {
-                return calculateMetrics(url);  // Calculate metrics for each valid URL
-            } else {
-                console.error(`Invalid URL: ${url}`);
-                return null;
-            }
-        }).filter(result => result !== null);
-        
-        results.forEach(result => {
-            console.log(JSON.stringify(result));  // Output NDJSON
-        });
-
-        process.exit(0);
-    } catch (error) {
-        console.error("Error processing the file:", error);
-        process.exit(1);
-    }
+// Function to handle test mode
+function Test() {
+  console.log('Running in test mode...');
+  // You can define test logic here
 }
 
-function isValidUrl(url: string): boolean {
-    const npmjsPattern = /^https:\/\/www\.npmjs\.com\/package\/.+/;
-    const githubPattern = /^https:\/\/github\.com\/.+\/.+/;
-    return npmjsPattern.test(url) || githubPattern.test(url);
-}
-
+// Main function to validate input and run the script
 function main() {
-    const args = process.argv.slice(2);
-    if (args.length === 0) {
-        console.error('No command provided.');
-        process.exit(1);
-    }
+  const inputArg = process.argv[2];
 
-    const command = args[0];
-
-    switch (command) {
-        case 'install':
-            install();
-            break;
-        case 'test':
-            test();
-            break;
-        default:
-            if (isValidUrl(command)) {
-                urlFile(command);
-            } else {
-                console.error('Invalid command or URL');
-                process.exit(1);
-            }
-            break;
-    }
+  if (inputArg === 'test') {
+    Test();
+  } else if (fs.existsSync(inputArg)) {
+    writeMetricsToFile(inputArg).catch(console.error);
+  } else {
+    console.error('Invalid command. Please provide a valid file path or use the word "test" as input.');
+  }
 }
 
+// Entry point of the script
 main();
