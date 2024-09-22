@@ -23,11 +23,34 @@ const GIT = simpleGit();
 
 // MAIN FUNCTIONS
 
-function convertToApiUrl(githubUrl) {
+function convertToApiUrl(githubUrl: string) {
     return githubUrl.replace('github.com', 'api.github.com/repos');
 }
 
-async function cloneRepo(githubUrl) {
+async function getGithubUrlFromNpm(npmUrl: string): Promise<string | null> {
+  const packageName = npmUrl.split('/').pop();
+  if (!packageName) {
+      console.error('Invalid npm package URL.');
+      return null;
+  }
+
+  try {
+      const response = await axios.get(`https://registry.npmjs.org/${packageName}`);
+      const repositoryUrl = response.data.repository?.url;
+
+      if (repositoryUrl && repositoryUrl.includes('github.com')) {
+          return repositoryUrl.replace(/^git\+/, '').replace(/\.git$/, '');
+      } else {
+          console.error('GitHub repository URL not found in npm package data.');
+          return null;
+      }
+  } catch (error) {
+      console.error('Error fetching npm package data:', error);
+      return null;
+  }
+}
+
+async function cloneRepo(githubUrl: string) {
     const repoName = githubUrl.split('/').slice(-1)[0];
     const repoPath = path.join(__dirname, 'cloned_repo', repoName);
     await GIT.clone(githubUrl, repoPath, ['--depth', '1']);
@@ -42,8 +65,19 @@ async function getRepoData() {
     console.error('Please provide a GitHub URL as a command-line argument.');
     return;
   }
+
+  let githubUrl = GITHUB_URL;
+
+  if (GITHUB_URL.includes('npmjs.com')) {
+      const npmGithubUrl = await getGithubUrlFromNpm(GITHUB_URL);
+      if (npmGithubUrl) {
+          githubUrl = npmGithubUrl;
+      } else {
+          return;
+      }
+  }
   
-  const GITHUB_API_URL = convertToApiUrl(GITHUB_URL);
+  const GITHUB_API_URL = convertToApiUrl(githubUrl);
   
   try {
 
@@ -56,7 +90,7 @@ async function getRepoData() {
     };
 
     // clone repo
-    const repoPath = await cloneRepo(GITHUB_URL);
+    const repoPath = await cloneRepo(githubUrl);
     const readme = await findReadme(repoPath);
     const license = await findLicense(repoPath, readme);
 
@@ -100,18 +134,18 @@ async function getRepoData() {
     // console.log('Readme:', readme);
     // console.log('License:', license);
 
-    // console.log('Bus Factor:', busFactorValue);
-    // console.log('Bus Factor Latency:', busFactorLatency);
-    // console.log('Responsiveness:', responsivenessValue);
-    // console.log('Responsiveness Latency:', responsivenessLatency);
-    // console.log('Correctness:', correctnessValue);
-    // console.log('Correctness Latency:', correctnessLatency);
-    // console.log('Ramp-Up Time:', rampUpTimeValue);
-    // console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
-    // console.log('License Compatability:', licenseCompatabilityValue);
-    // console.log('License Compatability Latency:', licenseCompatabilityLatency);
-    // console.log('Score:', score);
-    // console.log('Score Latency:', scoreLatency);
+    console.log('Bus Factor:', busFactorValue);
+    console.log('Bus Factor Latency:', busFactorLatency);
+    console.log('Responsiveness:', responsivenessValue);
+    console.log('Responsiveness Latency:', responsivenessLatency);
+    console.log('Correctness:', correctnessValue);
+    console.log('Correctness Latency:', correctnessLatency);
+    console.log('Ramp-Up Time:', rampUpTimeValue);
+    console.log('Ramp-Up Time Latency:', rampUpTimeLatency);
+    console.log('License Compatability:', licenseCompatabilityValue);
+    console.log('License Compatability Latency:', licenseCompatabilityLatency);
+    console.log('Score:', score);
+    console.log('Score Latency:', scoreLatency);
 
     return {
       busFactorValue,
@@ -137,7 +171,7 @@ async function getRepoData() {
 
 // API FETCH FUNCTIONS
 
-async function fetchCommits(commitsUrl, headers) {
+async function fetchCommits(commitsUrl: string, headers: { Accept: string; Authorization: string; }) {
   let page = 1;
   let totalCommits = 0;
   let uniqueContributors = new Map<string, number>();
@@ -150,7 +184,7 @@ async function fetchCommits(commitsUrl, headers) {
     totalCommits += commits.length;
 
     // Add unique contributor names and number of times they appear
-    commits.forEach(commit => {
+    commits.forEach((commit: { author: { login: any; }; }) => {
       if (commit.author && commit.author.login) {
           const login = commit.author.login;
           if (uniqueContributors.has(login)) {
@@ -168,7 +202,7 @@ async function fetchCommits(commitsUrl, headers) {
 return Array.from(uniqueContributors);
 }
 
-async function fetchIssues(issuesUrl, headers) {
+async function fetchIssues(issuesUrl: string, headers: { Accept: string; Authorization: string; }) {
   let page = 1;
   let hasMoreIssues = true;
   let openIssues = 0;
@@ -179,7 +213,7 @@ async function fetchIssues(issuesUrl, headers) {
     const response = await axios.get(`${issuesUrl}?page=${page}&per_page=100&state=all`, { headers });
     const issues = response.data;
 
-    issues.forEach(issue => {
+    issues.forEach((issue: { closed_at: string | number | Date; created_at: string | number | Date; }) => {
       if (issue.closed_at) {
         let createdAt = new Date(issue.created_at);
         let closedAt = new Date(issue.closed_at);
@@ -205,7 +239,7 @@ async function fetchIssues(issuesUrl, headers) {
 
 // REPO SEARCH FUNCTIONS
 
-async function fileExists(filePath){
+async function fileExists(filePath: fs.PathLike){
   try {
     await fs.promises.access(filePath, fs.constants.F_OK);
     return true;
@@ -214,7 +248,7 @@ async function fileExists(filePath){
   }
 }
 
-async function findReadme(repoPath){
+async function findReadme(repoPath: string){
   const entries = await fs.promises.readdir(repoPath, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.isFile() && entry.name.toLowerCase().startsWith('readme')) {
@@ -224,7 +258,7 @@ async function findReadme(repoPath){
   return null;
 }
 
-async function findLicense(repoPath, readme){
+async function findLicense(repoPath: string, readme: string | null){
   // check for a license file
   const entries = await fs.promises.readdir(repoPath, { withFileTypes: true });
   for (const entry of entries) {
@@ -238,6 +272,9 @@ async function findLicense(repoPath, readme){
     }
   }
   // check for a license in the readme
+  if (!readme) {
+    throw new Error('Readme file not found');
+  }
   const readmeContent = await fs.promises.readFile(readme, 'utf8');
   const readmeLicense = identifyLicense(readmeContent);
   if (readmeLicense !== null) {
@@ -247,7 +284,7 @@ async function findLicense(repoPath, readme){
   return null;
 }
 
-function identifyLicense(content){
+function identifyLicense(content: string){
   const licensePatterns: { [key: string]: RegExp } = {
     'MIT': /mit license/i,
     'Apache 2.0': /apache license, version 2\.0/i,
@@ -273,10 +310,10 @@ function identifyLicense(content){
 
 // METRIC CALCULATION FUNCTIONS
 
-async function busFactor(uniqueContributors) {
+async function busFactor(uniqueContributors: any[]) {
 
   // Sort contributors by number of commits
-  uniqueContributors.sort((a, b) => b[1] - a[1]);
+  uniqueContributors.sort((a: number[], b: number[]) => b[1] - a[1]);
 
   let totalContributors = uniqueContributors.length;
   let totalCommits = 0;
@@ -306,11 +343,11 @@ async function busFactor(uniqueContributors) {
   return {busFactorValue, busFactorEnd};
 }
 
-async function responsiveness(issueDurations) {
+async function responsiveness(issueDurations: any[]) {
 
   let responsivenessValue = 1;
 
-  const sum = issueDurations.reduce((a, b) => a + b, 0);
+  const sum = issueDurations.reduce((a: any, b: any) => a + b, 0);
   const average = sum / issueDurations.length;
   responsivenessValue = (1 - (average / 365));
 
@@ -323,7 +360,7 @@ async function responsiveness(issueDurations) {
   return {responsivenessValue, responsivenessEnd};
 }
 
-async function correctness(openIssues, closedIssues) {
+async function correctness(openIssues: number, closedIssues: number) {
   let correctnessValue = 1;
   let ratio = openIssues / (openIssues + closedIssues);
   correctnessValue = 1 - ratio;
@@ -336,7 +373,10 @@ async function correctness(openIssues, closedIssues) {
   return {correctnessValue, correctnessEnd};
 }
 
-async function rampUpTime(readme){
+async function rampUpTime(readme: fs.PathLike | fs.promises.FileHandle | null){
+  if (!readme) {
+    throw new Error('Readme file not found');
+  }
   const readmeContent = await fs.promises.readFile(readme, 'utf8');
   let rampUpTimeValue = 0;
 
@@ -364,7 +404,7 @@ async function rampUpTime(readme){
   return {rampUpTimeValue, rampUpTimeEnd};
 }
 
-async function licensing(license) {
+async function licensing(license: string | null) {
 
   let licenseCompatabilityValue = 1;
   if (license === null) {
@@ -377,7 +417,7 @@ async function licensing(license) {
   return {licenseCompatabilityValue, licenseEnd};
 }
 
-async function calculateScore(busFactorValue, responsivenessValue, correctnessValue, rampUpTimeValue, licensingValue) {
+async function calculateScore(busFactorValue: number, responsivenessValue: number, correctnessValue: number, rampUpTimeValue: number, licensingValue: number) {
 
   let weightedBusFactor = busFactorValue * WEIGHT_BUS_FACTOR;
   let weightedResponsiveness = responsivenessValue * WEIGHT_RESPONSIVENESS;
