@@ -2,25 +2,18 @@
   "name": "group27_461_project",
   "version": "1.0.0",
   "description": "Ian Karlmann\r Evan Hoffmann\r Gokul Harikrishnan\r Dexter Lamb",
-  "main": "metrics.js",
+  "main": "cli.js",
   "scripts": {
-    "test": "mocha -r ts-node/register 'test_cases/*.ts'"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "node-fetch": "^2.6.7",
-    "process": "^0.11.10",
-    "require": "^2.4.20",
-    "tsc": "^2.0.4"
-  },
   "devDependencies": {
-    "@types/jest": "^29.5.13",
     "@types/node": "^22.5.5",
-    "chai": "^5.1.1",
-    "mocha": "^10.7.3",
-    "ts-node": "^10.9.2",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "simple-git": "^3.27.0",
     "typescript": "^5.6.2"
   }
 }
