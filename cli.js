@@ -103,6 +103,8 @@ function readUrlsFromFile(filePath) {
 // Function to format and round the metrics, with NetScore at the end
 var formatMetrics = function (url, metrics) { return ({
     URL: url,
+    NetScore: metrics.score.toFixed(1),
+    NetScore_Latency: metrics.scoreLatency.toFixed(3),
     RampUp: metrics.rampUpTimeValue.toFixed(1),
     RampUp_Latency: metrics.rampUpTimeLatency.toFixed(3),
     Correctness: metrics.correctnessValue.toFixed(1),
@@ -112,9 +114,7 @@ var formatMetrics = function (url, metrics) { return ({
     ResponsiveMaintainer: metrics.responsivenessValue.toFixed(1),
     ResponsiveMaintainer_Latency: metrics.responsivenessLatency.toFixed(3),
     License: metrics.licenseCompatabilityValue.toFixed(1),
-    License_Latency: metrics.licenseCompatabilityLatency.toFixed(3),
-    NetScore: metrics.score.toFixed(1),
-    NetScore_Latency: metrics.scoreLatency.toFixed(3)
+    License_Latency: metrics.licenseCompatabilityLatency.toFixed(3)
 }); };
 // Main function to read URLs, get metrics, and write them to NDJSON
 function writeMetricsToFile(filePath) {
