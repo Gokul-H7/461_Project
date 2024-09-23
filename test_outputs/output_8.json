@@ -1,0 +1,14 @@
+{
+  "busFactorValue": 0.6207627118644068,
+  "busFactorLatency": 61.484,
+  "responsivenessValue": 0.1480789937559216,
+  "responsivenessLatency": 61.484,
+  "correctnessValue": 0.9593274255850943,
+  "correctnessLatency": 61.484,
+  "rampUpTimeValue": 0.4,
+  "rampUpTimeLatency": 61.501,
+  "licenseCompatabilityValue": 1,
+  "licenseCompatabilityLatency": 61.485,
+  "score": 0.625538314194483,
+  "scoreLatency": 61.501
+}
