@@ -1,147 +1,149 @@
-@echo off
+#!/bin/bash
 
-REM Log file
-set LOG_FILE=run.log
+# Log file
+LOG_FILE="run.log"
 
-REM Remove the log file if it exists
-if exist "%LOG_FILE%" del "%LOG_FILE%"
+# Remove the log file if it exists
+if [ -f "$LOG_FILE" ]; then
+    rm "$LOG_FILE"
+fi
 
-REM Redirect both stdout and stderr to the log file
-call :log > "%LOG_FILE%" 2>&1
-goto :main
+# Redirect both stdout and stderr to the log file using tee
+exec > >(tee -a "$LOG_FILE") 2>&1
 
-:log
-REM Check if the URL file path exists
-:check_url_file_path
-if not exist "%1" (
-    echo Please input install, test, or a correct file path
-    exit /b 1
-)
+# Check if the URL file path exists
+check_url_file_path() {
+    if [ ! -f "$1" ]; then
+        echo "Please input install, test, or a correct file path"
+        exit 1
+    fi
+}
 
-REM Main script
-:main
-if "%1" == "install" (
-    echo Installing dependencies...
-    npm init -y
-    npm install typescript --save-dev
-    npm install @types/node --save-dev
-    npm install fs --save-dev
-    npm install axios --save-dev
-    npm install dotenv --save-dev
-    npm install simple-git --save-dev
-    echo Dependencies installed.
-    exit /b 0
-) else if "%1" == "test" (
-    echo Running tests...
-    set URL_FILE=test_cases.txt
+# Main script
+case "$1" in
+    install)
+        echo "Installing dependencies..."
+        npm init -y
+        npm install typescript --save-dev
+        npm install @types/node --save-dev
+        npm install fs --save-dev
+        npm install axios --save-dev
+        npm install dotenv --save-dev
+        npm install simple-git --save-dev
+        echo "Dependencies installed."
+        exit 0
+        ;;
+
+    test)
+        echo "Running tests..."
+        URL_FILE="test_cases.txt"
   
-    if not exist "%URL_FILE%" (
-        echo Error: File '%URL_FILE%' does not exist.
-        exit /b 1
-    )
+        if [ ! -f "$URL_FILE" ]; then
+            echo "Error: File '$URL_FILE' does not exist."
+            exit 1
+        fi
 
-    REM Directory to store outputs
-    set OUTPUT_DIR=test_outputs
-    if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
+        # Directory to store outputs
+        OUTPUT_DIR="test_outputs"
+        mkdir -p "$OUTPUT_DIR"
 
-    REM Initialize counters
-    set /a TOTAL_TESTS=0
-    set /a PASSED_TESTS=0
+        # Initialize counters
+        TOTAL_TESTS=0
+        PASSED_TESTS=0
 
-    REM Iterate through URLs in the file and run tests
-    set /a INDEX=1
-    for /f "usebackq delims=" %%A in ("%URL_FILE%") do (
-        set URL=%%A
-        set URL=!URL:~0,-1!
+        # Iterate through URLs in the file and run tests
+        INDEX=1
+        while IFS= read -r URL; do
+            # Trim any trailing newline or carriage return characters
+            URL=$(echo "$URL" | tr -d '\r')
 
-        echo Processing test case #%INDEX% with URL: !URL!
+            echo "Processing test case #$INDEX with URL: $URL"
 
-        REM Run the metrics.js code on the URL and capture the output
-        node -e "require('./metrics.js').getRepoData('!URL!').then(data => { 
-            const fs = require('fs');
-            fs.writeFileSync('%OUTPUT_DIR%/output_!INDEX!.json', JSON.stringify(data, null, 2));
-        }).catch(err => { 
-            console.error('Error:', err); // Log the error using console.error
-            const fs = require('fs');
-            fs.writeFileSync('%OUTPUT_DIR%/output_!INDEX!.json', JSON.stringify({error: 'Access denied or other error'}, null, 2));
-        });"
+            # Run the metrics.js code on the URL and capture the output
+            node -e "require('./metrics.js').getRepoData('$URL').then(data => { 
+                const fs = require('fs');
+                fs.writeFileSync('$OUTPUT_DIR/output_$INDEX.json', JSON.stringify(data, null, 2));
+            }).catch(err => { 
+                console.error('Error:', err); // Log the error using console.error
+                const fs = require('fs');
+                fs.writeFileSync('$OUTPUT_DIR/output_$INDEX.json', JSON.stringify({error: 'Access denied or other error'}, null, 2));
+            });"
 
-        REM Wait for the file to be written before proceeding to the next test case
-        timeout /t 1 /nobreak >nul
+            # Wait for the file to be written before proceeding to the next test case
+            sleep 1
 
-        REM Check if the output file contains the expected results (e.g., a score field)
-        findstr /c:"\"score\":" "%OUTPUT_DIR%/output_!INDEX!.json" >nul
-        if !errorlevel! == 0 (
-            for /f "tokens=2 delims=:" %%B in ('findstr /c:"\"score\":" "%OUTPUT_DIR%/output_!INDEX!.json"') do (
-                set SCORE=%%B
-                set SCORE=!SCORE:~1,-1!
+            # Check if the output file contains the expected results (e.g., a score field)
+            if grep -q '"score":' "$OUTPUT_DIR/output_$INDEX.json"; then
+                SCORE=$(grep '"score":' "$OUTPUT_DIR/output_$INDEX.json" | awk '{print $2}' | tr -d ',')
+                
+                # Check if SCORE is a valid number
+                if ! [[ "$SCORE" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+                    echo "Test case #$INDEX failed (invalid score value)." | tee -a "$LOG_FILE"
+                else
+                    # Check if the score is negative
+                    if [[ "$SCORE" == -* ]]; then
+                        echo "Test case #$INDEX failed (negative score)." | tee -a "$LOG_FILE"
+                    else
+                        echo "Test case #$INDEX passed." | tee -a "$LOG_FILE"
+                        PASSED_TESTS=$((PASSED_TESTS + 1))
+                    fi
+                fi
+            else
+                echo "Test case #$INDEX failed (invalid metrics)." | tee -a "$LOG_FILE"
+            fi
 
-                REM Check if SCORE is a valid number
-                echo !SCORE! | findstr /r "^[0-9]*\.?[0-9]*$" >nul
-                if !errorlevel! == 0 (
-                    REM Check if the score is negative
-                    if "!SCORE:~0,1!" == "-" (
-                        echo Test case #%INDEX% failed (negative score). | tee -a "%LOG_FILE%"
-                    ) else (
-                        echo Test case #%INDEX% passed. | tee -a "%LOG_FILE%"
-                        set /a PASSED_TESTS+=1
-                    )
-                ) else (
-                    echo Test case #%INDEX% failed (invalid score value). | tee -a "%LOG_FILE%"
-                )
-            )
-        ) else (
-            echo Test case #%INDEX% failed (invalid metrics). | tee -a "%LOG_FILE%"
-        )
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            INDEX=$((INDEX + 1))
 
-        set /a TOTAL_TESTS+=1
-        set /a INDEX+=1
-    )
+        done < "$URL_FILE"
 
-    REM Calculate coverage
-    if %TOTAL_TESTS% gtr 0 (
-        set /a COVERAGE=100 * PASSED_TESTS / TOTAL_TESTS
-    ) else (
-        set COVERAGE=0
-    )
+        # Calculate coverage
+        if [ $TOTAL_TESTS -gt 0 ]; then
+            COVERAGE=$((100 * PASSED_TESTS / TOTAL_TESTS))
+        else
+            COVERAGE=0
+        fi
 
-    REM Summary output
-    echo Total: %TOTAL_TESTS% | tee -a "%LOG_FILE%"
-    echo Passed: %PASSED_TESTS% | tee -a "%LOG_FILE%"
-    echo Coverage: %COVERAGE%% | tee -a "%LOG_FILE%"
-    echo %PASSED_TESTS%/%TOTAL_TESTS% test cases passed. %COVERAGE%% line coverage achieved. | tee -a "%LOG_FILE%"
+        # Summary output
+        echo "Total: $TOTAL_TESTS" | tee -a "$LOG_FILE"
+        echo "Passed: $PASSED_TESTS" | tee -a "$LOG_FILE"
+        echo "Coverage: ${COVERAGE}%" | tee -a "$LOG_FILE"
+        echo "$PASSED_TESTS/$TOTAL_TESTS test cases passed. ${COVERAGE}% line coverage achieved." | tee -a "$LOG_FILE"
 
-    exit /b 0
-) else (
-    if "%1" == "" (
-        echo Usage: %0 {install^|test^|url_file_path} | tee -a "%LOG_FILE%"
-        exit /b 1
-    )
+        exit 0
+        ;;
 
-    call :check_url_file_path "%1"
-    
-    REM Compile the TypeScript file
-    npx tsc cli.ts
-    if errorlevel 1 (
-        echo TypeScript compilation failed. | tee -a "%LOG_FILE%"
-        exit /b 1
-    )
+    *)
+        if [ -z "$1" ]; then
+            echo "Usage: $0 {install|test|url_file_path}" | tee -a "$LOG_FILE"
+            exit 1
+        fi
 
-    if exist cloned_repo rmdir /s /q cloned_repo
-    if exist output.json del output.json
-    REM Run the compiled JS file with the given URL file path
-    node cli.js "%1"
-    if errorlevel 1 (
-        echo Failed to execute cli.js. | tee -a "%LOG_FILE%"
-        exit /b 1
-    )
+        check_url_file_path "$1"
+        
+        # Compile the TypeScript file
+        npx tsc cli.ts
+        if [ $? -ne 0 ]; then
+            echo "TypeScript compilation failed." | tee -a "$LOG_FILE"
+            exit 1
+        fi
 
-    if exist output.json (
-        type output.json | tee -a "%LOG_FILE%"
-    ) else (
-        echo output.json not found. | tee -a "%LOG_FILE%"
-        exit /b 1
-    )
+        rm -rf cloned_repo
+        rm -f output.json
+        # Run the compiled JS file with the given URL file path
+        node cli.js "$1"
+        if [ $? -ne 0 ]; then
+            echo "Failed to execute cli.js." | tee -a "$LOG_FILE"
+            exit 1
+        fi
 
-    exit /b 0
-)
+        if [ -f output.json ]; then
+            cat output.json | tee -a "$LOG_FILE"
+        else
+            echo "output.json not found." | tee -a "$LOG_FILE"
+            exit 1
+        fi
+
+        exit 0
+        ;;
+esac
