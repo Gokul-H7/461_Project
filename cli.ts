@@ -54,7 +54,7 @@ async function writeMetricsToFile(filePath: string) {
   }
 
   writeStream.end();
-  console.log('Metrics written to', outputFilePath);
+  //console.log('Metrics written to', outputFilePath);
 }
 
 // Function to handle test mode

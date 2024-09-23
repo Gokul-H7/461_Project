@@ -161,7 +161,7 @@ export async function getRepoData(githubUrl: string) {
 
   } 
   catch (error) {
-    console.log('Error fetching repo data for ', githubUrl);
+    //console.log('Error fetching repo data for ', githubUrl);
     return {
       busFactorValue: -1,
       busFactorLatency: -1,

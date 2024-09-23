@@ -212,7 +212,7 @@ function getRepoData(githubUrl) {
                         }];
                 case 11:
                     error_2 = _h.sent();
-                    console.log('Error fetching repo data for ', githubUrl);
+                    //console.log('Error fetching repo data for ', githubUrl);
                     return [2 /*return*/, {
                             busFactorValue: -1,
                             busFactorLatency: -1,

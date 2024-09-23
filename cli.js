@@ -150,7 +150,6 @@ function writeMetricsToFile(filePath) {
                     return [3 /*break*/, 2];
                 case 7:
                     writeStream.end();
-                    console.log('Metrics written to', outputFilePath);
                     return [2 /*return*/];
             }
         });
