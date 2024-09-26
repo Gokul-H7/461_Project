@@ -362,6 +362,10 @@ async function responsiveness(issueDurations: any[]) {
   const average = sum / issueDurations.length;
   responsivenessValue = (1 - (average / 365));
 
+  if(responsivenessValue === null){
+    responsivenessValue = 0;
+  }
+
   // test log statements
   // console.log('Ratio (open/total):', ratio);
   // console.log('Average Duration (days):', average);
@@ -375,6 +379,10 @@ async function correctness(openIssues: number, closedIssues: number) {
   let correctnessValue = 1;
   let ratio = openIssues / (openIssues + closedIssues);
   correctnessValue = 1 - ratio;
+
+  if(correctnessValue === null){
+    correctnessValue = 0;
+  }
 
   // test log statements
   // console.log('Ratio (open/total):', ratio);
